@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "kOSPropMonitor", "kOSPropMonitor\kOSPropMonitor.csproj", "{7999BF50-1FF7-4D61-9A4C-BA34544327B6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7999BF50-1FF7-4D61-9A4C-BA34544327B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7999BF50-1FF7-4D61-9A4C-BA34544327B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7999BF50-1FF7-4D61-9A4C-BA34544327B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7999BF50-1FF7-4D61-9A4C-BA34544327B6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		StartupItem = kOSPropMonitor\kOSPropMonitor.csproj
+	EndGlobalSection
+EndGlobal

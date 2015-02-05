@@ -75,19 +75,22 @@ namespace kOSPropMonitor
         {
             if (processorIsInstalled) {
                 if (initialized) {
-                    if (consumeEvent) {
-                        consumeEvent = false;
-                        Event.current.Use ();
-                    }
-
+                    //Set power state from SharedObjects
                     isPowered = processor_shares [current_processor_id].Window.IsPowered;
 
+                    //Set text tinting depending on power state
                     if (isPowered) {
                         currentTextTint = textTint;
                     } else {
                         currentTextTint = textTintUnpowered;
                     }
 
+                    //Process keystrokes
+                    if (isLocked) {
+                        if (processor_shares [current_processor_id] != null) {
+                            ProcessKeyStrokes ();
+                        }
+                    }
 
                     //Unlock if console is not open, or if the selected console is not powered.
                     if (!isPowered && isLocked || !consoleIsOpen && isLocked) {
@@ -96,6 +99,12 @@ namespace kOSPropMonitor
 
                     //Copy the ScreenBuffer to the consoleBuffer
                     BufferConsole ();
+
+                    //Consume event - IDEK
+                    if (consumeEvent) {
+                        consumeEvent = false;
+                        Event.current.Use ();
+                    }
                 }
                 cursorBlinkTime += Time.deltaTime;
 
@@ -141,13 +150,6 @@ namespace kOSPropMonitor
             }
 
             if (processorIsInstalled) {
-                //Process keystrokes
-                if (isLocked) {
-                    if (processor_shares [current_processor_id] != null) {
-                        ProcessKeyStrokes ();
-                    }
-                }
-
                 //Do console logic if open
                 if (consoleIsOpen) {
                     //Set screen size if needed

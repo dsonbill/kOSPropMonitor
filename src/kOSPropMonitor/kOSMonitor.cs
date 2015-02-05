@@ -16,11 +16,15 @@ namespace kOSPropMonitor
     {
         //Buttons
         [KSPField]
-        public int keyboardButton = 4;
+        public int processorSelectorUpButton = 0;
         [KSPField]
-        public int processorSelectorButton = 3;
+        public int processorSelectorDownButton = 1;
         [KSPField]
-        public int consoleButton = 2;
+        public int openConsoleButton = 2;
+        [KSPField]
+        public int toggleProcessorPowerButton = 3;
+        [KSPField]
+        public int toggleKeyboardButton = 4;
 
         //kOS Fields
         [KSPField]
@@ -34,11 +38,12 @@ namespace kOSPropMonitor
 
         //General State Variables
         private bool initialized = false;
-        private string response = "No Activity";
+        private string response = "kOS Terminal Standing By";
         private bool isPowered = false;
 
 
         //kOS Processor Variables
+        private bool processorIsInstalled;
         private int current_processor_id = 0;
         private List<SharedObjects> processor_shares;
         private List<kOSProcessor> vessel_processors;
@@ -68,64 +73,58 @@ namespace kOSPropMonitor
 
         public override void OnUpdate()
         {
-            if (initialized)
-            {
-                if (consumeEvent)
-                {
-                    consumeEvent = false;
-                    Event.current.Use();
-                }
-
-                isPowered = processor_shares[current_processor_id].Window.IsPowered;
-
-                if (isPowered)
-                {
-                    currentTextTint = textTint;
-                }
-                else
-                {
-                    currentTextTint = textTintUnpowered;
-                }
-
-                if (!isPowered && isLocked || !consoleIsOpen && isLocked)
-                {
-                    Unlock();
-                }
-
-                BufferConsole();
-
-                if (consoleIsOpen)
-                {
-                    if (processor_shares[current_processor_id].Screen.ColumnCount != consoleWidth || processor_shares[current_processor_id].Screen.RowCount != consoleHeight)
-                    {
-                        processor_shares[current_processor_id].Screen.SetSize(consoleHeight, consoleWidth);
+            if (processorIsInstalled) {
+                if (initialized) {
+                    if (consumeEvent) {
+                        consumeEvent = false;
+                        Event.current.Use ();
                     }
-                    response = consoleBuffer;
-                }
-            }
-            cursorBlinkTime += Time.deltaTime;
 
-            if (cursorBlinkTime > 1) cursorBlinkTime -= 1;
+                    isPowered = processor_shares [current_processor_id].Window.IsPowered;
+
+                    if (isPowered) {
+                        currentTextTint = textTint;
+                    } else {
+                        currentTextTint = textTintUnpowered;
+                    }
+
+
+                    //Unlock if console is not open, or if the selected console is not powered.
+                    if (!isPowered && isLocked || !consoleIsOpen && isLocked) {
+                        Unlock ();
+                    }
+
+                    //Copy the ScreenBuffer to the consoleBuffer
+                    BufferConsole ();
+                }
+                cursorBlinkTime += Time.deltaTime;
+
+                if (cursorBlinkTime > 1)
+                    cursorBlinkTime -= 1;
+            }
         }
 
         public void Initialize(int screenWidth, int screenHeight)
         {
+            //Set Processor Installed Flag
+            processorIsInstalled = false;
+
+            //Register kOSProcessors
             vessel_processors = GetProcessorList();
+
+            //Instantiate SharedObjects List
             processor_shares = new List<SharedObjects>();
 
             foreach (kOSProcessor kos_processor in vessel_processors)
             {
+                //Set Processor Installed Flag
+                processorIsInstalled = true;
+
                 UnityEngine.Debug.Log("kOSPropMonitor Found A Processor! Beginning Registration...");
 
                 //Register the kOSProcessor's SharedObjects
                 processor_shares.Add(GetProcessorShared(kos_processor));
                 UnityEngine.Debug.Log("kOSPropMonitor Registered Processor Share");
-
-                //Set the screen size. In the future, either save the size and set it back
-                //or standardize to what kOS uses for it's terminal (probably a good idea for portability!)
-                //MAYBE WE DON'T NEED TO?!
-                //kos_processor.Screen.SetSize(consoleHeight, consoleWidth);
-
             }
 
 
@@ -135,82 +134,137 @@ namespace kOSPropMonitor
 
         public string ContentProcessor(int screenWidth, int screenHeight)
         {
-            if (!initialized)
-            {
-                if(this.vessel != null)
-                    Initialize(screenWidth, screenHeight);
+            //Check for initialization
+            if (!initialized) {
+                if (this.vessel != null)
+                    Initialize (screenWidth, screenHeight);
             }
 
-            if (isLocked)
-            {
-                if (processor_shares[current_processor_id] != null)
-                {
-                    ProcessKeyStrokes();
+            if (processorIsInstalled) {
+                //Process keystrokes
+                if (isLocked) {
+                    if (processor_shares [current_processor_id] != null) {
+                        ProcessKeyStrokes ();
+                    }
                 }
-            }
 
+                //Do console logic if open
+                if (consoleIsOpen) {
+                    //Set screen size if needed
+                    if (processor_shares [current_processor_id].Screen.ColumnCount != consoleWidth || processor_shares [current_processor_id].Screen.RowCount != consoleHeight) {
+                        processor_shares [current_processor_id].Screen.SetSize (consoleHeight, consoleWidth);
+                    }
+
+                    //Set response to the consoleBuffer
+                    response = consoleBuffer;
+                }
+            } else {
+                response = "kOS is not installed!";
+            }
             return response;
         }
 
         public void ButtonProcessor(int buttonID)
         {
-            //Keyboard input lock button
-            if (buttonID == keyboardButton && consoleIsOpen)
-            {
-                ToggleLock();
-            }
+            if (processorIsInstalled) {
 
+                //A better kOSProcessor cycler. *Might* Improve a bit.
+                if (buttonID == processorSelectorUpButton) {
 
-            //Very simple kOSProcessor cycler. Should probably improve.
-            else if (buttonID == processorSelectorButton)
-            {
-
-                response = "";
+                    response = "";
                 
-                current_processor_id++;
+                    current_processor_id--;
 
-                if (current_processor_id == vessel_processors.Count)
-                {
-                    current_processor_id = 0;
+                    if (current_processor_id == -1) {
+                        current_processor_id = vessel_processors.Count - 1;
+                    }
+
+                    isPowered = processor_shares [current_processor_id].Window.IsPowered;
+
+                    if (isPowered) {
+                        currentTextTint = textTint;
+                    } else {
+                        currentTextTint = textTintUnpowered;
+                    }
+
+                    for (int processor_count = 0; processor_count < vessel_processors.Count; processor_count++) {
+                        if (processor_count == current_processor_id) {
+                            response += "kOS Processor " + currentTextTint + processor_count + "[#FFFFFF] <--" + System.Environment.NewLine;
+                        } else {
+                            response += "kOS Processor " + processor_count + System.Environment.NewLine;
+                        }
+                    }
+
+                } else if (buttonID == processorSelectorDownButton) {
+
+                    response = "";
+
+                    current_processor_id++;
+
+                    if (current_processor_id == vessel_processors.Count) {
+                        current_processor_id = 0;
+                    }
+
+                    isPowered = processor_shares [current_processor_id].Window.IsPowered;
+
+                    if (isPowered) {
+                        currentTextTint = textTint;
+                    } else {
+                        currentTextTint = textTintUnpowered;
+                    }
+
+                    for (int processor_count = 0; processor_count < vessel_processors.Count; processor_count++) {
+                        if (processor_count == current_processor_id) {
+                            response += "kOS Processor " + currentTextTint + processor_count + "[#FFFFFF] <--" + System.Environment.NewLine;
+                        } else {
+                            response += "kOS Processor " + processor_count + System.Environment.NewLine;
+                        }
+                    }
                 }
 
-                int processor_count = 0;
-                foreach (kOSProcessor kos_processor in vessel_processors)
-                {
-                    if (kos_processor == vessel_processors[current_processor_id])
-                    {
-                        response += "kOS Processor [#009900]" + current_processor_id + "[#FFFFFF]" + System.Environment.NewLine;
-                    }
-                    else
-                    {
-                        response += "kOS Processor " + processor_count + System.Environment.NewLine;
-                    }
-                    processor_count++;
+
+                //Opens the console
+                else if (buttonID == openConsoleButton) {
+                    consoleIsOpen = true;
                 }
 
-            }
+
+                //Power Toggle Button
+                else if (buttonID == toggleProcessorPowerButton) {
+                    if (vessel_processors [current_processor_id] != null) {
+                        vessel_processors [current_processor_id].TogglePower ();
+
+                        isPowered = processor_shares [current_processor_id].Window.IsPowered;
+
+                        if (isPowered) {
+                            currentTextTint = textTint;
+                        } else {
+                            currentTextTint = textTintUnpowered;
+                        }
+
+                        if (!consoleIsOpen) {
+                            response = "";
+                            for (int processor_count = 0; processor_count < vessel_processors.Count; processor_count++) {
+                                if (processor_count == current_processor_id) {
+                                    response += "kOS Processor " + currentTextTint + processor_count + "[#FFFFFF] <--" + System.Environment.NewLine;
+                                } else {
+                                    response += "kOS Processor " + processor_count + System.Environment.NewLine;
+                                }
+                            }
+                        }
+                    }
+                }
 
 
-            //Opens the console
-            else if (buttonID == consoleButton)
-            {
-                //SetCurrentProcessor(GetProcessorShared(vessel_processors[current_processor_id]));
-                //ResizeScreenBuffer(consoleWidth, consoleHeight); //Doesn't work.
-                consoleIsOpen = true;
-            }
+                //Keyboard input lock button
+                else if (buttonID == toggleKeyboardButton && consoleIsOpen) {
+                    ToggleLock ();
+                }
 
-
-            //Print button ID on unassigned
-            //else
-            //{
-            //  response = "Unassigned Button ID: " + buttonID + System.Environment.NewLine + "Newline Test";
-            //}
-
-
-            //Close Console on all buttons but consoleButton and keyboardButton
-            if (consoleIsOpen && buttonID != consoleButton && buttonID !=keyboardButton)
-            {
-                consoleIsOpen = false;
+                //Allow usage of toggleKeyboardButton and toggleProcessorPowerButton without closing the console
+                if (consoleIsOpen && buttonID != openConsoleButton && buttonID != toggleKeyboardButton && buttonID != toggleProcessorPowerButton) {
+                    consoleIsOpen = false;
+                }
             }
         }
 
@@ -222,12 +276,6 @@ namespace kOSPropMonitor
             var proc_shared = sharedField.GetValue(processor);
             return (SharedObjects)proc_shared;
         }
-
-        //Not Needed
-        //public void SetCurrentProcessor(SharedObjects curr_proc)
-        //{
-        //  current_processor = curr_proc;
-        //}
 
         public void ToggleOpen()
         {

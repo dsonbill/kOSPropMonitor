@@ -31,16 +31,16 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\..\..\..\steam\steam\SteamApps\common\Kerbal Space Program\KSP_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\..\..\..\..\steam\steam\SteamApps\common\Kerbal Space Program\KSP_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="kOS">
-      <HintPath>..\..\..\..\KOS\src\kOS\bin\Debug\kOS.dll</HintPath>
+      <HintPath>..\..\..\KOS\src\kOS\bin\Debug\kOS.dll</HintPath>
     </Reference>
     <Reference Include="kOS.Safe">
-      <HintPath>..\..\..\..\KOS\src\kOS\bin\Debug\kOS.Safe.dll</HintPath>
+      <HintPath>..\..\..\KOS\src\kOS\bin\Debug\kOS.Safe.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\..\..\..\..\..\steam\steam\SteamApps\common\Kerbal Space Program\KSP_Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>..\..\..\..\..\steam\steam\SteamApps\common\Kerbal Space Program\KSP_Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

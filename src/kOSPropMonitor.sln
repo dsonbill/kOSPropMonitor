@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "kOSPropMonitor", "kOSPropMonitor\kOSPropMonitor.csproj", "{7999BF50-1FF7-4D61-9A4C-BA34544327B6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InternalModuleExtentions", "InternalModuleExtentions\InternalModuleExtentions.csproj", "{EE666864-F094-4AD2-88D6-AEEB8778E62A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -13,8 +15,29 @@ Global
 		{7999BF50-1FF7-4D61-9A4C-BA34544327B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7999BF50-1FF7-4D61-9A4C-BA34544327B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7999BF50-1FF7-4D61-9A4C-BA34544327B6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE666864-F094-4AD2-88D6-AEEB8778E62A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE666864-F094-4AD2-88D6-AEEB8778E62A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE666864-F094-4AD2-88D6-AEEB8778E62A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE666864-F094-4AD2-88D6-AEEB8778E62A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = kOSPropMonitor\kOSPropMonitor.csproj
+		Policies = $0
+		$0.TextStylePolicy = $1
+		$1.FileWidth = 120
+		$1.inheritsSet = VisualStudio
+		$1.inheritsScope = text/plain
+		$1.scope = text/x-csharp
+		$0.CSharpFormattingPolicy = $2
+		$2.ElseIfNewLinePlacement = SameLine
+		$2.AfterDelegateDeclarationParameterComma = True
+		$2.inheritsSet = Mono
+		$2.inheritsScope = text/x-csharp
+		$2.scope = text/x-csharp
+		$0.TextStylePolicy = $3
+		$3.FileWidth = 120
+		$3.inheritsSet = VisualStudio
+		$3.inheritsScope = text/plain
+		$3.scope = text/plain
 	EndGlobalSection
 EndGlobal

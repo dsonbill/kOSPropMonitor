@@ -38,7 +38,7 @@ namespace kOSPropMonitor
 
         //General State Variables
         private bool initialized = false;
-        private string response = "kOS Terminal Standing By";
+        private string response = "Console Standing By";
         private bool isPowered = false;
 
 
@@ -76,56 +76,32 @@ namespace kOSPropMonitor
 
         public override void OnUpdate()
         {
-            if (processorIsInstalled) {
-                if (initialized) {
-                    //Set power state from SharedObjects
-                    isPowered = processor_shares [current_processor_id].Window.IsPowered;
-
-                    //Set text tinting depending on power state
-                    if (isPowered) {
-                        currentTextTint = textTint;
-                    } else {
-                        currentTextTint = textTintUnpowered;
-                    }
-
-                    //Process keystrokes
-                    if (isLocked) {
-                        if (processor_shares [current_processor_id] != null) {
-                            ProcessKeyStrokes ();
-                        }
-                    }
-
-                    //Unlock if console is not open, or if the selected console is not powered.
-                    if (!isPowered && isLocked || !consoleIsOpen && isLocked) {
-                        Unlock ();
-                    }
-
-                    //Copy the ScreenBuffer to the consoleBuffer
-                    GetNewestBuffer ();
-                    BufferConsole ();
-
-                    //Do console logic if open
-                    if (consoleIsOpen) {
-                        //Set screen size if needed
-                        if (processor_shares [current_processor_id].Screen.ColumnCount != consoleWidth || processor_shares [current_processor_id].Screen.RowCount != consoleHeight) {
-                            processor_shares [current_processor_id].Screen.SetSize (consoleHeight, consoleWidth);
-                        }
-
-                        //Set response to the consoleBuffer
-                        response = consoleBuffer;
-                    }
-
-                    //Consume event - IDEK
-                    if (consumeEvent) {
-                        consumeEvent = false;
-                        Event.current.Use ();
-                    }
+            if (initialized) {
+                
+                //Process keystrokes
+                if (isLocked) {
+                    ProcessKeyStrokes ();
                 }
-                cursorBlinkTime += Time.deltaTime;
+                
+                //Unlock if console is not open, or if the selected console is not powered.
+                if (!isPowered && isLocked || !consoleIsOpen && isLocked) {
+                    Unlock ();
+                }
+                
+                //Copy the ScreenBuffer to the consoleBuffer
+                GetNewestBuffer ();
+                BufferConsole ();
 
-                if (cursorBlinkTime > 1)
-                    cursorBlinkTime -= 1;
+                //Consume event - IDEK
+                if (consumeEvent) {
+                    consumeEvent = false;
+                    Event.current.Use ();
+                }
             }
+            cursorBlinkTime += Time.deltaTime;
+
+            if (cursorBlinkTime > 1)
+                cursorBlinkTime -= 1;
         }
 
         public void Initialize(int screenWidth, int screenHeight)
@@ -149,17 +125,6 @@ namespace kOSPropMonitor
                 //Register the kOSProcessor's SharedObjects
                 processor_shares.Add(GetProcessorShared(kos_processor));
                 UnityEngine.Debug.Log("kOSPropMonitor Registered Processor Share");
-            }
-
-            // Register kOSPropMonitor Functions
-            foreach (SharedObjects processor_share in processor_shares)
-            {
-
-                if (!GetFunctionDictionary(processor_share).ContainsKey("rpmtest"))
-                {
-                    FunctionTestNewFunction functionTestNewFunctionObject = new FunctionTestNewFunction ();
-                    GetFunctionDictionary(processor_share).Add ("rpmtest", (kOS.Function.FunctionBase)functionTestNewFunctionObject);
-                }
             }
 
 
@@ -525,6 +490,10 @@ namespace kOSPropMonitor
 
         private void SpecialKey(char key)
         {
+            switch (key) {
+                case (char)kOSKeys.UP
+
+            }
             if (processor_shares[current_processor_id] != null && processor_shares[current_processor_id].Interpreter != null)
             {
                 processor_shares[current_processor_id].Interpreter.SpecialKey(key);

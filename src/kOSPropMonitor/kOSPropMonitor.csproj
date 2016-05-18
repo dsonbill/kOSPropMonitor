@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -31,16 +31,16 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\..\..\steam\steam\SteamApps\common\Kerbal Space Program\KSP_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\..\..\..\..\steam\steam\SteamApps\common\Kerbal Space Program\KSP_Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>..\UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="kOS">
-      <HintPath>..\..\..\..\..\steam\steam\SteamApps\common\Kerbal Space Program\GameData\kOS\Plugins\kOS.dll</HintPath>
+      <HintPath>..\kOS.dll</HintPath>
     </Reference>
     <Reference Include="kOS.Safe">
-      <HintPath>..\..\..\..\..\steam\steam\SteamApps\common\Kerbal Space Program\GameData\kOS\Plugins\kOS.Safe.dll</HintPath>
+      <HintPath>..\kOS.Safe.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

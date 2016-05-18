@@ -2,13 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
-using KSP.IO;
 using kOS;
+using kOS.Safe.UserIO;
 using kOS.Safe.Screen;
 using kOS.Module;
-using kOS.Execution;
-using kOS.Safe.Compilation;
-using kOS.Safe.Utilities;
 
 namespace kOSPropMonitor
 {
@@ -46,7 +43,7 @@ namespace kOSPropMonitor
         private bool processorIsInstalled;
         private int current_processor_id = 0;
         private List<SharedObjects> processor_shares;
-        private List<kOSProcessor> vessel_processors;
+        private List<kOSProcessor> processors;
 
         //kOS Terminal Variables
         private bool consumeEvent;
@@ -57,10 +54,9 @@ namespace kOSPropMonitor
         private float cursorBlinkTime;
         private string currentTextTint;
         private IScreenSnapShot mostRecentScreen;
-        private IScreenSnapShot previousScreen;
         private DateTime lastBufferGet;
 
-        //kOS Keyboar Variables
+        //Keyboard Memory Variables
         private KeyBinding rememberThrottleCutoffKey;
         private KeyBinding rememberThrottleFullKey;
         private KeyBinding rememberCameraResetKey;
@@ -76,39 +72,49 @@ namespace kOSPropMonitor
 
         public override void OnUpdate()
         {
-            if (processorIsInstalled) {
-                if (initialized) {
+            if (processorIsInstalled)
+            {
+                if (initialized)
+                {
                     //Set power state from SharedObjects
-                    isPowered = processor_shares [current_processor_id].Window.IsPowered;
+                    isPowered = processor_shares[current_processor_id].Window.IsPowered;
 
                     //Set text tinting depending on power state
-                    if (isPowered) {
+                    if (isPowered)
+                    {
                         currentTextTint = textTint;
-                    } else {
+                    }
+                    else
+                    {
                         currentTextTint = textTintUnpowered;
                     }
 
                     //Process keystrokes
-                    if (isLocked) {
-                        if (processor_shares [current_processor_id] != null) {
-                            ProcessKeyStrokes ();
+                    if (isLocked)
+                    {
+                        if (processor_shares[current_processor_id] != null)
+                        {
+                            ProcessKeyEvents();
                         }
                     }
 
                     //Unlock if console is not open, or if the selected console is not powered.
-                    if (!isPowered && isLocked || !consoleIsOpen && isLocked) {
-                        Unlock ();
+                    if (!isPowered && isLocked || !consoleIsOpen && isLocked)
+                    {
+                        Unlock();
                     }
 
                     //Copy the ScreenBuffer to the consoleBuffer
-                    GetNewestBuffer ();
-                    BufferConsole ();
+                    GetNewestBuffer();
+                    BufferConsole();
 
                     //Do console logic if open
-                    if (consoleIsOpen) {
+                    if (consoleIsOpen)
+                    {
                         //Set screen size if needed
-                        if (processor_shares [current_processor_id].Screen.ColumnCount != consoleWidth || processor_shares [current_processor_id].Screen.RowCount != consoleHeight) {
-                            processor_shares [current_processor_id].Screen.SetSize (consoleHeight, consoleWidth);
+                        if (processor_shares[current_processor_id].Screen.ColumnCount != consoleWidth || processor_shares[current_processor_id].Screen.RowCount != consoleHeight)
+                        {
+                            processor_shares[current_processor_id].Screen.SetSize(consoleHeight, consoleWidth);
                         }
 
                         //Set response to the consoleBuffer
@@ -116,9 +122,10 @@ namespace kOSPropMonitor
                     }
 
                     //Consume event - IDEK
-                    if (consumeEvent) {
+                    if (consumeEvent)
+                    {
                         consumeEvent = false;
-                        Event.current.Use ();
+                        Event.current.Use();
                     }
                 }
                 cursorBlinkTime += Time.deltaTime;
@@ -134,12 +141,12 @@ namespace kOSPropMonitor
             processorIsInstalled = false;
 
             //Register kOSProcessors
-            vessel_processors = GetProcessorList();
+            processors = GetProcessorList();
 
             //Instantiate SharedObjects List
             processor_shares = new List<SharedObjects>();
 
-            foreach (kOSProcessor kos_processor in vessel_processors)
+            foreach (kOSProcessor kos_processor in processors)
             {
                 //Set Processor Installed Flag
                 processorIsInstalled = true;
@@ -151,17 +158,18 @@ namespace kOSPropMonitor
                 UnityEngine.Debug.Log("kOSPropMonitor Registered Processor Share");
             }
 
-            // Register kOSPropMonitor Functions
-            foreach (SharedObjects processor_share in processor_shares)
+            // Set Key Binding Memory - these are safe from kOS up here
+            rememberCameraResetKey = GameSettings.CAMERA_RESET;
+            rememberCameraModeKey = GameSettings.CAMERA_MODE;
+            rememberCameraViewKey = GameSettings.CAMERA_NEXT;
+            rememberThrottleCutoffKey = GameSettings.THROTTLE_CUTOFF;
+            rememberThrottleFullKey = GameSettings.THROTTLE_FULL;
+
+            // List the processors if there are any
+            if (processorIsInstalled)
             {
-
-                if (!GetFunctionDictionary(processor_share).ContainsKey("rpmtest"))
-                {
-                    FunctionTestNewFunction functionTestNewFunctionObject = new FunctionTestNewFunction ();
-                    GetFunctionDictionary(processor_share).Add ("rpmtest", (kOS.Function.FunctionBase)functionTestNewFunctionObject);
-                }
+                PrintProcessorList();
             }
-
 
             UnityEngine.Debug.Log("kOSPropMonitor Initialized!");
             initialized = true;
@@ -170,117 +178,90 @@ namespace kOSPropMonitor
         public string ContentProcessor(int screenWidth, int screenHeight)
         {
             //Check for initialization
-            if (!initialized) {
+            if (!initialized)
+            {
                 if (this.vessel != null)
-                    Initialize (screenWidth, screenHeight);
+                    Initialize(screenWidth, screenHeight);
             }
 
-            if (!processorIsInstalled) {
+            if (!processorIsInstalled)
+            {
                 response = "kOS is not installed!";
             }
 
+            // Everything flows through here
             return response;
         }
 
         public void ButtonProcessor(int buttonID)
         {
-            if (processorIsInstalled) {
+            if (processorIsInstalled)
+            {
 
                 //A better kOSProcessor cycler. *Might* Improve a bit.
-                if (buttonID == processorSelectorUpButton) {
-
-                    response = "";
-                
+                if (buttonID == processorSelectorUpButton)
+                {
                     current_processor_id--;
 
-                    if (current_processor_id == -1) {
-                        current_processor_id = vessel_processors.Count - 1;
+                    if (current_processor_id == -1)
+                    {
+                        current_processor_id = processors.Count - 1;
                     }
 
-                    isPowered = processor_shares [current_processor_id].Window.IsPowered;
+                    PrintProcessorList();
 
-                    if (isPowered) {
-                        currentTextTint = textTint;
-                    } else {
-                        currentTextTint = textTintUnpowered;
-                    }
-
-                    for (int processor_count = 0; processor_count < vessel_processors.Count; processor_count++) {
-                        if (processor_count == current_processor_id) {
-                            response += "kOS Processor " + currentTextTint + processor_count + "[#FFFFFF] <--" + System.Environment.NewLine;
-                        } else {
-                            response += "kOS Processor " + processor_count + System.Environment.NewLine;
-                        }
-                    }
-
-                } else if (buttonID == processorSelectorDownButton) {
-
-                    response = "";
-
+                }
+                else if (buttonID == processorSelectorDownButton)
+                {
                     current_processor_id++;
 
-                    if (current_processor_id == vessel_processors.Count) {
+                    if (current_processor_id == processors.Count)
+                    {
                         current_processor_id = 0;
                     }
 
-                    isPowered = processor_shares [current_processor_id].Window.IsPowered;
-
-                    if (isPowered) {
-                        currentTextTint = textTint;
-                    } else {
-                        currentTextTint = textTintUnpowered;
-                    }
-
-                    for (int processor_count = 0; processor_count < vessel_processors.Count; processor_count++) {
-                        if (processor_count == current_processor_id) {
-                            response += "kOS Processor " + currentTextTint + processor_count + "[#FFFFFF] <--" + System.Environment.NewLine;
-                        } else {
-                            response += "kOS Processor " + processor_count + System.Environment.NewLine;
-                        }
-                    }
+                    PrintProcessorList();
                 }
 
 
                 //Opens the console
-                else if (buttonID == openConsoleButton) {
-                    consoleIsOpen = true;
+                else if (buttonID == openConsoleButton)
+                {
+                    consoleIsOpen = !consoleIsOpen;
+                    if (!consoleIsOpen)
+                    {
+                        if (processorIsInstalled)
+                        {
+                            PrintProcessorList();
+                        }
+                    }
                 }
 
 
                 //Power Toggle Button
-                else if (buttonID == toggleProcessorPowerButton) {
-                    if (vessel_processors [current_processor_id] != null) {
-                        vessel_processors [current_processor_id].TogglePower ();
+                else if (buttonID == toggleProcessorPowerButton)
+                {
+                    if (processors[current_processor_id] != null)
+                    {
+                        processors[current_processor_id].TogglePower();
 
-                        isPowered = processor_shares [current_processor_id].Window.IsPowered;
-
-                        if (isPowered) {
-                            currentTextTint = textTint;
-                        } else {
-                            currentTextTint = textTintUnpowered;
-                        }
-
-                        if (!consoleIsOpen) {
-                            response = "";
-                            for (int processor_count = 0; processor_count < vessel_processors.Count; processor_count++) {
-                                if (processor_count == current_processor_id) {
-                                    response += "kOS Processor " + currentTextTint + processor_count + "[#FFFFFF] <--" + System.Environment.NewLine;
-                                } else {
-                                    response += "kOS Processor " + processor_count + System.Environment.NewLine;
-                                }
-                            }
+                        if (!consoleIsOpen)
+                        {
+                            PrintProcessorList();
                         }
                     }
                 }
 
 
                 //Keyboard input lock button
-                else if (buttonID == toggleKeyboardButton && consoleIsOpen) {
-                    ToggleLock ();
+                else if (buttonID == toggleKeyboardButton && consoleIsOpen)
+                {
+                    ToggleLock();
                 }
 
                 //Allow usage of toggleKeyboardButton and toggleProcessorPowerButton without closing the console
-                if (consoleIsOpen && buttonID != openConsoleButton && buttonID != toggleKeyboardButton && buttonID != toggleProcessorPowerButton) {
+                if (consoleIsOpen && buttonID != openConsoleButton && buttonID != toggleKeyboardButton && buttonID != toggleProcessorPowerButton)
+                {
                     consoleIsOpen = false;
                 }
             }
@@ -295,12 +276,36 @@ namespace kOSPropMonitor
             return (SharedObjects)proc_shared;
         }
 
-        public Dictionary<string, kOS.Function.FunctionBase> GetFunctionDictionary(SharedObjects share)
+        public List<kOSProcessor> GetProcessorList()
         {
-            FieldInfo functionsField = typeof(kOS.Function.FunctionManager).GetField("functions", BindingFlags.Instance | BindingFlags.GetField | BindingFlags.NonPublic);
-            object manager_functions = functionsField.GetValue(share.FunctionManager);
+            return this.vessel.FindPartModulesImplementing<kOSProcessor>();
+        }
 
-            return (Dictionary<string, kOS.Function.FunctionBase>)manager_functions;
+        public void PrintProcessorList()
+        {
+            isPowered = processor_shares[current_processor_id].Window.IsPowered;
+
+            if (isPowered)
+            {
+                currentTextTint = textTint;
+            }
+            else
+            {
+                currentTextTint = textTintUnpowered;
+            }
+
+            response = "Processor List:" + Environment.NewLine;
+            for (int processor_count = 0; processor_count < processors.Count; processor_count++)
+            {
+                if (processor_count == current_processor_id)
+                {
+                    response += "kOS Processor " + currentTextTint + processor_count + "[#FFFFFF] <--" + Environment.NewLine;
+                }
+                else
+                {
+                    response += "kOS Processor " + processor_count + Environment.NewLine;
+                }
+            }
         }
 
         public void ToggleOpen()
@@ -311,11 +316,6 @@ namespace kOSPropMonitor
                 consoleIsOpen = false;
         }
 
-        public List<kOSProcessor> GetProcessorList()
-        {
-            return this.vessel.FindPartModulesImplementing<kOSProcessor>();
-        }
-        
         
         //Printing
         public void GetNewestBuffer()
@@ -347,7 +347,7 @@ namespace kOSPropMonitor
 
                 List<IScreenBufferLine> buffer = mostRecentScreen.Buffer;
 
-                int rowsToPaint = System.Math.Min (consoleHeight, buffer.Count);
+                int rowsToPaint = System.Math.Min(consoleHeight, buffer.Count);
 
                 consoleBuffer = "";
 
@@ -400,15 +400,10 @@ namespace kOSPropMonitor
             // so the only way to fix it is to use the keybindings system from the Setup screen.
             // When the terminal is focused, the THROTTLE_CUTOFF action gets unbound, and then
             // when its unfocused later, its put back the way it was:
-            rememberCameraResetKey = GameSettings.CAMERA_RESET;
             GameSettings.CAMERA_RESET = new KeyBinding(KeyCode.None);
-            rememberCameraModeKey = GameSettings.CAMERA_MODE;
             GameSettings.CAMERA_MODE = new KeyBinding(KeyCode.None);
-            rememberCameraViewKey = GameSettings.CAMERA_NEXT;
             GameSettings.CAMERA_NEXT = new KeyBinding(KeyCode.None);
-            rememberThrottleCutoffKey = GameSettings.THROTTLE_CUTOFF;
             GameSettings.THROTTLE_CUTOFF = new KeyBinding(KeyCode.None);
-            rememberThrottleFullKey = GameSettings.THROTTLE_FULL;
             GameSettings.THROTTLE_FULL = new KeyBinding(KeyCode.None);
         }
 
@@ -426,21 +421,23 @@ namespace kOSPropMonitor
 
             // This seems to be the only way to force KSP to let me lock out the "X" throttle
             // key.  It seems to entirely bypass the logic of every other keypress in the game:
-            if (rememberThrottleCutoffKey != null)
-                GameSettings.THROTTLE_CUTOFF = rememberThrottleCutoffKey;
-            if (rememberThrottleFullKey != null)
-                GameSettings.THROTTLE_FULL = rememberThrottleFullKey;
-            if (rememberCameraResetKey != null)
-                GameSettings.CAMERA_RESET = rememberCameraResetKey;
-            if (rememberCameraModeKey != null)
-                GameSettings.CAMERA_MODE = rememberCameraModeKey;
-            if (rememberCameraViewKey != null)
-                GameSettings.CAMERA_NEXT = rememberCameraViewKey;
+            GameSettings.THROTTLE_CUTOFF = rememberThrottleCutoffKey;
+            GameSettings.THROTTLE_FULL = rememberThrottleFullKey;
+            GameSettings.CAMERA_RESET = rememberCameraResetKey;
+            GameSettings.CAMERA_MODE = rememberCameraModeKey;
+            GameSettings.CAMERA_NEXT = rememberCameraViewKey;
         }
 
-        private void ProcessKeyStrokes()
+        void ProcessKeyEvents()
         {
             Event e = Event.current;
+            
+            // This *HAS* to be up here. I have no idea what's causing this.
+            if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)
+            {
+                Type((char)UnicodeCommand.STARTNEXTLINE);
+            }
+
             if (e.type == EventType.KeyDown)
             {
                 // Unity handles some keys in a particular way
@@ -450,12 +447,31 @@ namespace kOSPropMonitor
                 // command sequences
                 if (e.keyCode == KeyCode.C && e.control) // Ctrl+C
                 {
-                    SpecialKey((char)kOSKeys.BREAK);
+                    Type((char)UnicodeCommand.BREAK);
                     consumeEvent = true;
                     return;
                 }
-                if (e.keyCode == KeyCode.X && e.control && e.shift) // Ctrl+Shift+X
+                // Command used to be Control-shift-X, now we don't care if shift is down aymore, to match the telnet expereince
+                // where there is no such thing as "uppercasing" a control char.
+                if ((e.keyCode == KeyCode.X && e.control) ||
+                    (e.keyCode == KeyCode.D && e.control) // control-D to match the telnet experience
+                   )
                 {
+                    Type((char)0x000d);
+                    consumeEvent = true;
+                    return;
+                }
+
+                if (e.keyCode == KeyCode.A && e.control)
+                {
+                    Type((char)0x0001);
+                    consumeEvent = true;
+                    return;
+                }
+
+                if (e.keyCode == KeyCode.E && e.control)
+                {
+                    Type((char)0x0005);
                     consumeEvent = true;
                     return;
                 }
@@ -464,81 +480,46 @@ namespace kOSPropMonitor
                 {
                     Type(c);
                     consumeEvent = true;
+                    cursorBlinkTime = 0.0f; // Don't blink while the user is still actively typing.
                 }
-                else if (e.keyCode != KeyCode.None) 
+
+                else if (e.keyCode != KeyCode.None)
                 {
-                    Keydown(e.keyCode);
                     consumeEvent = true;
+                    switch (e.keyCode)
+                    {
+                        case KeyCode.Tab: Type('\t'); break;
+                        case KeyCode.LeftArrow: Type((char)UnicodeCommand.LEFTCURSORONE); break;
+                        case KeyCode.RightArrow: Type((char)UnicodeCommand.RIGHTCURSORONE); break;
+                        case KeyCode.UpArrow: Type((char)UnicodeCommand.UPCURSORONE); break;
+                        case KeyCode.DownArrow: Type((char)UnicodeCommand.DOWNCURSORONE); break;
+                        case KeyCode.Home: Type((char)UnicodeCommand.HOMECURSOR); break;
+                        case KeyCode.End: Type((char)UnicodeCommand.ENDCURSOR); break;
+                        case KeyCode.PageUp: Type((char)UnicodeCommand.PAGEUPCURSOR); break;
+                        case KeyCode.PageDown: Type((char)UnicodeCommand.PAGEDOWNCURSOR); break;
+                        case KeyCode.Delete: Type((char)UnicodeCommand.DELETERIGHT); break;
+                        case KeyCode.Backspace: Type((char)UnicodeCommand.DELETELEFT); break;
+                        
+                        //THESE ARE NOT WORKING FOR ME.
+                        case KeyCode.KeypadEnter:  // (deliberate fall through to next case)
+                        case KeyCode.Return: Type((char)UnicodeCommand.STARTNEXTLINE); break;
+
+                        // More can be added to the list here to support things like F1, F2, etc.  But at the moment we don't use them yet.
+
+                        // default: ignore and allow the event to pass through to whatever else wants to read it:
+                        default: consumeEvent = false; break;
+                    }
+                    cursorBlinkTime = 0.0f;// Don't blink while the user is still actively typing.
                 }
             }
         }
 
-        private void Keydown(KeyCode code)
-        {
-            switch (code)
-            {
-                case KeyCode.Break:      SpecialKey((char)kOSKeys.BREAK); break;
-                case KeyCode.F1:         SpecialKey((char)kOSKeys.F1);    break;
-                case KeyCode.F2:         SpecialKey((char)kOSKeys.F2);    break;
-                case KeyCode.F3:         SpecialKey((char)kOSKeys.F3);    break;
-                case KeyCode.F4:         SpecialKey((char)kOSKeys.F4);    break;
-                case KeyCode.F5:         SpecialKey((char)kOSKeys.F5);    break;
-                case KeyCode.F6:         SpecialKey((char)kOSKeys.F6);    break;
-                case KeyCode.F7:         SpecialKey((char)kOSKeys.F7);    break;
-                case KeyCode.F8:         SpecialKey((char)kOSKeys.F8);    break;
-                case KeyCode.F9:         SpecialKey((char)kOSKeys.F9);    break;
-                case KeyCode.F10:        SpecialKey((char)kOSKeys.F10);   break;
-                case KeyCode.F11:        SpecialKey((char)kOSKeys.F11);   break;
-                case KeyCode.F12:        SpecialKey((char)kOSKeys.F12);   break;
-                case KeyCode.UpArrow:    SpecialKey((char)kOSKeys.UP);    break;
-                case KeyCode.DownArrow:  SpecialKey((char)kOSKeys.DOWN);  break;
-                case KeyCode.LeftArrow:  SpecialKey((char)kOSKeys.LEFT);  break;
-                case KeyCode.RightArrow: SpecialKey((char)kOSKeys.RIGHT); break;
-                case KeyCode.Home:       SpecialKey((char)kOSKeys.HOME);  break;
-                case KeyCode.End:        SpecialKey((char)kOSKeys.END);   break;
-                case KeyCode.Delete:     SpecialKey((char)kOSKeys.DEL);   break;
-                case KeyCode.PageUp:     SpecialKey((char)kOSKeys.PGUP);  break;
-                case KeyCode.PageDown:   SpecialKey((char)kOSKeys.PGDN);  break;
-
-                    case (KeyCode.Backspace):
-                    Type((char)8);
-                    break;
-
-                    case (KeyCode.KeypadEnter):
-                    case (KeyCode.Return):
-                    Type('\r');
-                    break;
-
-                    case (KeyCode.Tab):
-                    Type('\t');
-                    break;
-            }
-        }
-
-        private void Type(char ch)
+        private void Type(char command)
         {
             if (processor_shares[current_processor_id] != null && processor_shares[current_processor_id].Interpreter != null)
             {
-                processor_shares[current_processor_id].Interpreter.Type(ch);
+                processor_shares[current_processor_id].Window.ProcessOneInputChar(command, null);
             }
-        }
-
-        private void SpecialKey(char key)
-        {
-            if (processor_shares[current_processor_id] != null && processor_shares[current_processor_id].Interpreter != null)
-            {
-                processor_shares[current_processor_id].Interpreter.SpecialKey(key);
-            }
-        }
-    }
-
-
-    //kOS Functions
-    public class FunctionTestNewFunction : kOS.Function.FunctionBase
-    {
-        public override void Execute(SharedObjects shared)
-        {
-            shared.Screen.Print ("Function called succesfully!");
         }
     }
 }

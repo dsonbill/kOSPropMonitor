@@ -1,0 +1,50 @@
+{buttonSideT0}     {buttonSideT1}     {buttonSideT2}     {buttonSideT3}     {buttonSideT4}     {buttonSideT5}     {buttonSideT6}
+{buttonSideSmallT0}{buttonLabelT0}{buttonSideSmallT0}     {buttonSideSmallT1}{buttonLabelT1}{buttonSideSmallT1}     {buttonSideSmallT2}{buttonLabelT2}{buttonSideSmallT2}     {buttonSideSmallT3}{buttonLabelT3}{buttonSideSmallT3}     {buttonSideSmallT4}{buttonLabelT4}{buttonSideSmallT4}     {buttonSideSmallT5}{buttonLabelT5}{buttonSideSmallT5}     {buttonSideSmallT6}{buttonLabelT6}{buttonSideSmallT6}
+{buttonSideT0}     {buttonSideT1}     {buttonSideT2}     {buttonSideT3}     {buttonSideT4}     {buttonSideT5}     {buttonSideT6}
+====================================================================================================
+## #############   {lightSideT0} {lightSideT1} {lightSideT2} {lightSideT3} {lightSideT4} {lightSideT5} {lightSideT6}  ##
+## #  {kCPU1}  #   {lightSideSmallT0}{lightLabelT0}{lightSideSmallT0} {lightSideSmallT1}{lightLabelT1}{lightSideSmallT1} {lightSideSmallT2}{lightLabelT2}{lightSideSmallT2} {lightSideSmallT3}{lightLabelT3}{lightSideSmallT3} {lightSideSmallT4}{lightLabelT4}{lightSideSmallT4} {lightSideSmallT5}{lightLabelT5}{lightSideSmallT5} {lightSideSmallT6}{lightLabelT6}{lightSideSmallT6}  ##
+## #  {kCPU2}  #   {lightSideT0} {lightSideT1} {lightSideT2} {lightSideT3} {lightSideT4} {lightSideT5} {lightSideT6}  ##
+## #  {kCPU3}  #   {lightSideB0} {lightSideB1} {lightSideB2} {lightSideB3} {lightSideB4} {lightSideB5} {lightSideB6}  ##
+## #  {kCPU4}  #   {lightSideSmallB0}{lightLabelB0}{lightSideSmallB0} {lightSideSmallB1}{lightLabelB1}{lightSideSmallB1} {lightSideSmallB2}{lightLabelB2}{lightSideSmallB2} {lightSideSmallB3}{lightLabelB3}{lightSideSmallB3} {lightSideSmallB4}{lightLabelB4}{lightSideSmallB4} {lightSideSmallB5}{lightLabelB5}{lightSideSmallB5} {lightSideSmallB6}{lightLabelB6}{lightSideSmallB6}  ##
+## #############   {lightSideB0} {lightSideB1} {lightSideB2} {lightSideB3} {lightSideB4} {lightSideB5} {lightSideB6}  ##
+====================================================================================================
+{l1}
+{l2}
+{l3}
+{l4}
+{l5}
+{l6}
+{l7}
+{l8}
+{l9}
+{l10}
+{l11}
+{l12}
+{l13}
+{l14}
+{l15}
+{l16}
+{l17}
+{l18}
+{l19}
+{l20}
+{l21}
+{l22}
+{l23}
+{l24}
+{l25}
+{l26}
+{l27}
+{l28}
+{l29}
+{l30}
+{l31}
+{l32}
+{l33}
+{l34}
+{l35}
+====================================================================================================
+{buttonSideB0}     {buttonSideB1}     {buttonSideB2}     {buttonSideB3}     {buttonSideB4}     {buttonSideB5}     {buttonSideB6}
+{buttonSideSmallB0}{buttonLabelB0}{buttonSideSmallB0}     {buttonSideSmallB1}{buttonLabelB1}{buttonSideSmallB1}     {buttonSideSmallB2}{buttonLabelB2}{buttonSideSmallB2}     {buttonSideSmallB3}{buttonLabelB3}{buttonSideSmallB3}     {buttonSideSmallB4}{buttonLabelB4}{buttonSideSmallB4}     {buttonSideSmallB5}{buttonLabelB5}{buttonSideSmallB5}     {buttonSideSmallB6}{buttonLabelB6}{buttonSideSmallB6}
+{buttonSideB0}     {buttonSideB1}     {buttonSideB2}     {buttonSideB3}     {buttonSideB4}     {buttonSideB5}     {buttonSideB6}

@@ -542,7 +542,8 @@ namespace kOSPropMonitor
                     {
                         if (current_position + lrange >= processors.Count)
                         {
-                            response_formats["kCPU" + (lrange + 1)] = "      ";
+                            response_formats["kCPU" + (lrange + 1)] = "       ";
+                            continue;
                         }
 
                         isPowered = processor_shares[current_position + lrange].Window.IsPowered;

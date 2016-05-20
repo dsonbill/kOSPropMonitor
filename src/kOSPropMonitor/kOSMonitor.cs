@@ -70,7 +70,21 @@ namespace kOSPropMonitor
         [KSPField]
         public int cancelButton = 3;
 
-        //kOS Fields
+        //Terminal Fields
+        [KSPField]
+        public string template = "";
+        [KSPField]
+        public string buttonSide = "##########";
+        [KSPField]
+        public string buttonSideSmall = "#";
+        [KSPField]
+        public string buttonEmptyLabel = "        ";
+        [KSPField]
+        public string lightSide = "##########";
+        [KSPField]
+        public string lightSideSmall = "#";
+        [KSPField]
+        public string lightEmptyLabel = "        ";
         [KSPField]
         public string textTint = "[#009900ff]";
         [KSPField]
@@ -87,22 +101,6 @@ namespace kOSPropMonitor
         public int consoleWidth = 40;
         [KSPField]
         public int consoleHeight = 20;
-
-        //Terminal Fields
-        [KSPField]
-        public string template = "";
-        [KSPField]
-        public string buttonSide = "##########";
-        [KSPField]
-        public string buttonSideSmall = "#";
-        [KSPField]
-        public string buttonEmptyLabel = "        ";
-        [KSPField]
-        public string lightSide = "##########";
-        [KSPField]
-        public string lightSideSmall = "#";
-        [KSPField]
-        public string lightEmptyLabel = "        ";
 
         //General State Variables
         private bool initialized = false;
@@ -121,6 +119,7 @@ namespace kOSPropMonitor
         private int current_processor_id = 0;
         private List<SharedObjects> processor_shares;
         private List<kOSProcessor> processors;
+        private Dictionary<int, float> wasOff;
 
         //kOS Terminal Variables
         private bool consumeEvent;
@@ -168,6 +167,26 @@ namespace kOSPropMonitor
                         if (isLocked)
                         {
                             ToggleLock();
+                        }
+                    }
+
+                    //Check if a processor was recently booted
+                    if (wasOff.Count > 0)
+                    {
+                        foreach (KeyValuePair<int, float> kvpair in wasOff)
+                        {
+                            if (kvpair.Value > 0.25f)
+                            {
+                                //Add bound variables
+                                AddGettersAndSetters(processor_shares[kvpair.Key]);
+                                wasOff.Remove(kvpair.Key);
+                                Debug.Log("kOSPropMonitor Re-Initialized Processor");
+                            }
+                            else
+                            {
+                                wasOff[kvpair.Key] += Time.deltaTime;
+                                Debug.Log("kOSPropMonitor Initializing Processor...");
+                            }
                         }
                     }
 
@@ -219,17 +238,31 @@ namespace kOSPropMonitor
             //Response Dictionary
             response_formats = new Dictionary<string, string>();
 
+            //Boot-up tracking
+            wasOff = new Dictionary<int, float>();
+
             //Register kOSProcessors
             processors = GetProcessorList();
 
-            //Instantiate SharedObjects List
-            processor_shares = GetProcessorShares();
+            //Get SharedObjects
+            processor_shares = new List<SharedObjects>();
+            foreach (kOSProcessor kos_processor in processors)
+            {
+                //Set Processor Installed Flag
+                processorIsInstalled = true;
+
+                //Register the kOSProcessor's SharedObjects
+                processor_shares.Add(GetProcessorShare(kos_processor));
+            }
 
             //Set Vessel Part Cound
             lastPartCount = this.vessel.parts.Count;
 
             //Add Getters and Setters
-            AddGettersAndSetters();
+            foreach (SharedObjects so in processor_shares)
+            {
+                AddGettersAndSetters(so);
+            }
 
             //Single-Init Actions
             if (!initialized)
@@ -327,7 +360,7 @@ namespace kOSPropMonitor
                 initialized = true;
             }
 
-            UnityEngine.Debug.Log("kOSPropMonitor Initialized!");
+            Debug.Log("kOSPropMonitor Initialized!");
         }
 
         public string ContentProcessor(int screenWidth, int screenHeight)
@@ -397,7 +430,17 @@ namespace kOSPropMonitor
                 //Power Toggle Button
                 else if (buttonID == toggleProcessorPowerButton)
                 {
-                    if (processors[current_processor_id] != null)
+                    //Set power state from SharedObjects
+                    isPowered = processor_shares[current_processor_id].Window.IsPowered;
+
+                    //Reset getters and setters on power-up
+                    if (!isPowered)
+                    {
+                        Debug.Log("kOSPropMonitor Adding Boot-Up Event");
+                        processors[current_processor_id].TogglePower();
+                        wasOff[current_processor_id] = 0.00f;
+                    }
+                    else
                     {
                         processors[current_processor_id].TogglePower();
                     }
@@ -420,21 +463,12 @@ namespace kOSPropMonitor
 
 
         //kOS-Utilities
-        List<SharedObjects> GetProcessorShares()
+        SharedObjects GetProcessorShare(kOSProcessor processor)
         {
-            List<SharedObjects> solist = new List<SharedObjects>();
-            foreach (kOSProcessor kos_processor in processors)
-            {
-                //Set Processor Installed Flag
-                processorIsInstalled = true;
-
-                //Register the kOSProcessor's SharedObjects
-                FieldInfo sharedField = typeof(kOSProcessor).GetField("shared", BindingFlags.Instance | BindingFlags.GetField | BindingFlags.NonPublic);
-                var proc_shared = sharedField.GetValue(kos_processor);
-                solist.Add((SharedObjects)proc_shared);
-                //UnityEngine.Debug.Log("kOSPropMonitor Registered Processor Share");
-            }
-            return solist;
+            //Register the kOSProcessor's SharedObjects
+            FieldInfo sharedField = typeof(kOSProcessor).GetField("shared", BindingFlags.Instance | BindingFlags.GetField | BindingFlags.NonPublic);
+            var proc_shared = sharedField.GetValue(processor);
+            return (SharedObjects)proc_shared;
         }
 
         List<kOSProcessor> GetProcessorList()
@@ -449,7 +483,7 @@ namespace kOSPropMonitor
             string FILE_NAME = Path.Combine(Path.Combine(KSPUtil.ApplicationRootPath, "GameData"), template);
             if (!File.Exists(FILE_NAME))
             {
-                UnityEngine.Debug.Log("kOSPropMonitor: Template {0} does not exist." + FILE_NAME);
+                UnityEngine.Debug.Log(string.Format("kOSPropMonitor: Template {0} does not exist.", FILE_NAME));
                 return;
             }
             using (StreamReader sr = File.OpenText(FILE_NAME))
@@ -571,110 +605,101 @@ namespace kOSPropMonitor
             }
         }
 
-        void AddGettersAndSetters()
+        void AddGettersAndSetters(SharedObjects so)
         {
-            foreach (SharedObjects so in processor_shares)
-            {
-                //Looping doesn't seem to work - I'm sure there's another way to do this, but this is simple enough
+            //Looping doesn't seem to work - I'm sure there's another way to do this, but this is simple enough
 
-                //Top
-                so.BindingMgr.AddGetter("LIGHTT0", () => lightStates["lightT0"]);
-                so.BindingMgr.AddGetter("LIGHTT1", () => lightStates["lightT1"]);
-                so.BindingMgr.AddGetter("LIGHTT2", () => lightStates["lightT2"]);
-                so.BindingMgr.AddGetter("LIGHTT3", () => lightStates["lightT3"]);
-                so.BindingMgr.AddGetter("LIGHTT4", () => lightStates["lightT4"]);
-                so.BindingMgr.AddGetter("LIGHTT5", () => lightStates["lightT5"]);
-                so.BindingMgr.AddGetter("LIGHTT6", () => lightStates["lightT6"]);
+            // States
+            so.BindingMgr.AddGetter("LIGHT0", () => lightStates["lightT0"]);
+            so.BindingMgr.AddGetter("LIGHT1", () => lightStates["lightT1"]);
+            so.BindingMgr.AddGetter("LIGHT2", () => lightStates["lightT2"]);
+            so.BindingMgr.AddGetter("LIGHT3", () => lightStates["lightT3"]);
+            so.BindingMgr.AddGetter("LIGHT4", () => lightStates["lightT4"]);
+            so.BindingMgr.AddGetter("LIGHT5", () => lightStates["lightT5"]);
+            so.BindingMgr.AddGetter("LIGHT6", () => lightStates["lightT6"]);
+            so.BindingMgr.AddGetter("LIGHT7", () => lightStates["lightB0"]);
+            so.BindingMgr.AddGetter("LIGHT8", () => lightStates["lightB1"]);
+            so.BindingMgr.AddGetter("LIGHT9", () => lightStates["lightB2"]);
+            so.BindingMgr.AddGetter("LIGHT10", () => lightStates["lightB3"]);
+            so.BindingMgr.AddGetter("LIGHT11", () => lightStates["lightB4"]);
+            so.BindingMgr.AddGetter("LIGHT12", () => lightStates["lightB5"]);
+            so.BindingMgr.AddGetter("LIGHT13", () => lightStates["lightB6"]);
 
-                so.BindingMgr.AddGetter("BUTTONT0", () => buttonStates["buttonT0"]);
-                so.BindingMgr.AddGetter("BUTTONT1", () => buttonStates["buttonT1"]);
-                so.BindingMgr.AddGetter("BUTTONT2", () => buttonStates["buttonT2"]);
-                so.BindingMgr.AddGetter("BUTTONT3", () => buttonStates["buttonT3"]);
-                so.BindingMgr.AddGetter("BUTTONT4", () => buttonStates["buttonT4"]);
-                so.BindingMgr.AddGetter("BUTTONT5", () => buttonStates["buttonT5"]);
-                so.BindingMgr.AddGetter("BUTTONT6", () => buttonStates["buttonT6"]);
+            so.BindingMgr.AddGetter("BUTTON0", () => buttonStates["buttonT0"]);
+            so.BindingMgr.AddGetter("BUTTON1", () => buttonStates["buttonT1"]);
+            so.BindingMgr.AddGetter("BUTTON2", () => buttonStates["buttonT2"]);
+            so.BindingMgr.AddGetter("BUTTON3", () => buttonStates["buttonT3"]);
+            so.BindingMgr.AddGetter("BUTTON4", () => buttonStates["buttonT4"]);
+            so.BindingMgr.AddGetter("BUTTON5", () => buttonStates["buttonT5"]);
+            so.BindingMgr.AddGetter("BUTTON6", () => buttonStates["buttonT6"]);
+            so.BindingMgr.AddGetter("BUTTON7", () => buttonStates["buttonB0"]);
+            so.BindingMgr.AddGetter("BUTTON8", () => buttonStates["buttonB1"]);
+            so.BindingMgr.AddGetter("BUTTON9", () => buttonStates["buttonB2"]);
+            so.BindingMgr.AddGetter("BUTTON10", () => buttonStates["buttonB3"]);
+            so.BindingMgr.AddGetter("BUTTON11", () => buttonStates["buttonB4"]);
+            so.BindingMgr.AddGetter("BUTTON12", () => buttonStates["buttonB5"]);
+            so.BindingMgr.AddGetter("BUTTON13", () => buttonStates["buttonB6"]);
 
-                so.BindingMgr.AddSetter("LIGHTT0", value => lightStates["lightT0"] = (bool)value);
-                so.BindingMgr.AddSetter("LIGHTT1", value => lightStates["lightT1"] = (bool)value);
-                so.BindingMgr.AddSetter("LIGHTT2", value => lightStates["lightT2"] = (bool)value);
-                so.BindingMgr.AddSetter("LIGHTT3", value => lightStates["lightT3"] = (bool)value);
-                so.BindingMgr.AddSetter("LIGHTT4", value => lightStates["lightT4"] = (bool)value);
-                so.BindingMgr.AddSetter("LIGHTT5", value => lightStates["lightT5"] = (bool)value);
-                so.BindingMgr.AddSetter("LIGHTT6", value => lightStates["lightT6"] = (bool)value);
-                
-                so.BindingMgr.AddSetter("BUTTONT0", value => buttonStates["buttonT0"] = (bool)value);
-                so.BindingMgr.AddSetter("BUTTONT1", value => buttonStates["buttonT1"] = (bool)value);
-                so.BindingMgr.AddSetter("BUTTONT2", value => buttonStates["buttonT2"] = (bool)value);
-                so.BindingMgr.AddSetter("BUTTONT3", value => buttonStates["buttonT3"] = (bool)value);
-                so.BindingMgr.AddSetter("BUTTONT4", value => buttonStates["buttonT4"] = (bool)value);
-                so.BindingMgr.AddSetter("BUTTONT5", value => buttonStates["buttonT5"] = (bool)value);
-                so.BindingMgr.AddSetter("BUTTONT6", value => buttonStates["buttonT6"] = (bool)value);
+            so.BindingMgr.AddSetter("LIGHT0", value => lightStates["lightT0"] = (bool)value);
+            so.BindingMgr.AddSetter("LIGHT1", value => lightStates["lightT1"] = (bool)value);
+            so.BindingMgr.AddSetter("LIGHT2", value => lightStates["lightT2"] = (bool)value);
+            so.BindingMgr.AddSetter("LIGHT3", value => lightStates["lightT3"] = (bool)value);
+            so.BindingMgr.AddSetter("LIGHT4", value => lightStates["lightT4"] = (bool)value);
+            so.BindingMgr.AddSetter("LIGHT5", value => lightStates["lightT5"] = (bool)value);
+            so.BindingMgr.AddSetter("LIGHT6", value => lightStates["lightT6"] = (bool)value);
+            so.BindingMgr.AddSetter("LIGHT7", value => lightStates["lightB0"] = (bool)value);
+            so.BindingMgr.AddSetter("LIGHT8", value => lightStates["lightB1"] = (bool)value);
+            so.BindingMgr.AddSetter("LIGHT9", value => lightStates["lightB2"] = (bool)value);
+            so.BindingMgr.AddSetter("LIGHT10", value => lightStates["lightB3"] = (bool)value);
+            so.BindingMgr.AddSetter("LIGHT11", value => lightStates["lightB4"] = (bool)value);
+            so.BindingMgr.AddSetter("LIGHT12", value => lightStates["lightB5"] = (bool)value);
+            so.BindingMgr.AddSetter("LIGHT13", value => lightStates["lightB6"] = (bool)value);
 
-                so.BindingMgr.AddSetter("LIGHTT0LABEL", value => lightLabels["lightT0"] = (string)value);
-                so.BindingMgr.AddSetter("LIGHTT1LABEL", value => lightLabels["lightT1"] = (string)value);
-                so.BindingMgr.AddSetter("LIGHTT2LABEL", value => lightLabels["lightT2"] = (string)value);
-                so.BindingMgr.AddSetter("LIGHTT3LABEL", value => lightLabels["lightT3"] = (string)value);
-                so.BindingMgr.AddSetter("LIGHTT4LABEL", value => lightLabels["lightT4"] = (string)value);
-                so.BindingMgr.AddSetter("LIGHTT5LABEL", value => lightLabels["lightT5"] = (string)value);
-                so.BindingMgr.AddSetter("LIGHTT6LABEL", value => lightLabels["lightT6"] = (string)value);
+            so.BindingMgr.AddSetter("BUTTON0", value => buttonStates["buttonT0"] = (bool)value);
+            so.BindingMgr.AddSetter("BUTTON1", value => buttonStates["buttonT1"] = (bool)value);
+            so.BindingMgr.AddSetter("BUTTON2", value => buttonStates["buttonT2"] = (bool)value);
+            so.BindingMgr.AddSetter("BUTTON3", value => buttonStates["buttonT3"] = (bool)value);
+            so.BindingMgr.AddSetter("BUTTON4", value => buttonStates["buttonT4"] = (bool)value);
+            so.BindingMgr.AddSetter("BUTTON5", value => buttonStates["buttonT5"] = (bool)value);
+            so.BindingMgr.AddSetter("BUTTON6", value => buttonStates["buttonT6"] = (bool)value);
+            so.BindingMgr.AddSetter("BUTTON7", value => buttonStates["buttonB0"] = (bool)value);
+            so.BindingMgr.AddSetter("BUTTON8", value => buttonStates["buttonB1"] = (bool)value);
+            so.BindingMgr.AddSetter("BUTTON9", value => buttonStates["buttonB2"] = (bool)value);
+            so.BindingMgr.AddSetter("BUTTON10", value => buttonStates["buttonB3"] = (bool)value);
+            so.BindingMgr.AddSetter("BUTTON11", value => buttonStates["buttonB4"] = (bool)value);
+            so.BindingMgr.AddSetter("BUTTON12", value => buttonStates["buttonB5"] = (bool)value);
+            so.BindingMgr.AddSetter("BUTTON13", value => buttonStates["buttonB6"] = (bool)value);
 
-                so.BindingMgr.AddSetter("BUTTONT0LABEL", value => buttonLabels["buttonT0"] = (string)value);
-                so.BindingMgr.AddSetter("BUTTONT1LABEL", value => buttonLabels["buttonT1"] = (string)value);
-                so.BindingMgr.AddSetter("BUTTONT2LABEL", value => buttonLabels["buttonT2"] = (string)value);
-                so.BindingMgr.AddSetter("BUTTONT3LABEL", value => buttonLabels["buttonT3"] = (string)value);
-                so.BindingMgr.AddSetter("BUTTONT4LABEL", value => buttonLabels["buttonT4"] = (string)value);
-                so.BindingMgr.AddSetter("BUTTONT5LABEL", value => buttonLabels["buttonT5"] = (string)value);
-                so.BindingMgr.AddSetter("BUTTONT6LABEL", value => buttonLabels["buttonT6"] = (string)value);
+            // Labels
+            so.BindingMgr.AddSetter("LIGHT0LABEL", value => lightLabels["lightT0"] = (string)value);
+            so.BindingMgr.AddSetter("LIGHT1LABEL", value => lightLabels["lightT1"] = (string)value);
+            so.BindingMgr.AddSetter("LIGHT2LABEL", value => lightLabels["lightT2"] = (string)value);
+            so.BindingMgr.AddSetter("LIGHT3LABEL", value => lightLabels["lightT3"] = (string)value);
+            so.BindingMgr.AddSetter("LIGHT4LABEL", value => lightLabels["lightT4"] = (string)value);
+            so.BindingMgr.AddSetter("LIGHT5LABEL", value => lightLabels["lightT5"] = (string)value);
+            so.BindingMgr.AddSetter("LIGHT6LABEL", value => lightLabels["lightT6"] = (string)value);
+            so.BindingMgr.AddSetter("LIGHT7LABEL", value => lightLabels["lightB0"] = (string)value);
+            so.BindingMgr.AddSetter("LIGHT8LABEL", value => lightLabels["lightB1"] = (string)value);
+            so.BindingMgr.AddSetter("LIGHT9LABEL", value => lightLabels["lightB2"] = (string)value);
+            so.BindingMgr.AddSetter("LIGHT10LABEL", value => lightLabels["lightB3"] = (string)value);
+            so.BindingMgr.AddSetter("LIGHT11LABEL", value => lightLabels["lightB4"] = (string)value);
+            so.BindingMgr.AddSetter("LIGHT12LABEL", value => lightLabels["lightB5"] = (string)value);
+            so.BindingMgr.AddSetter("LIGHT13LABEL", value => lightLabels["lightB6"] = (string)value);
 
-                //Bottom
-                so.BindingMgr.AddGetter("LIGHTB0", () => lightStates["lightB0"]);
-                so.BindingMgr.AddGetter("LIGHTB1", () => lightStates["lightB1"]);
-                so.BindingMgr.AddGetter("LIGHTB2", () => lightStates["lightB2"]);
-                so.BindingMgr.AddGetter("LIGHTB3", () => lightStates["lightB3"]);
-                so.BindingMgr.AddGetter("LIGHTB4", () => lightStates["lightB4"]);
-                so.BindingMgr.AddGetter("LIGHTB5", () => lightStates["lightB5"]);
-                so.BindingMgr.AddGetter("LIGHTB6", () => lightStates["lightB6"]);
-
-                so.BindingMgr.AddGetter("BUTTONB0", () => buttonStates["buttonB0"]);
-                so.BindingMgr.AddGetter("BUTTONB1", () => buttonStates["buttonB1"]);
-                so.BindingMgr.AddGetter("BUTTONB2", () => buttonStates["buttonB2"]);
-                so.BindingMgr.AddGetter("BUTTONB3", () => buttonStates["buttonB3"]);
-                so.BindingMgr.AddGetter("BUTTONB4", () => buttonStates["buttonB4"]);
-                so.BindingMgr.AddGetter("BUTTONB5", () => buttonStates["buttonB5"]);
-                so.BindingMgr.AddGetter("BUTTONB6", () => buttonStates["buttonB6"]);
-
-                so.BindingMgr.AddSetter("LIGHTB0", value => lightStates["lightB0"] = (bool)value);
-                so.BindingMgr.AddSetter("LIGHTB1", value => lightStates["lightB1"] = (bool)value);
-                so.BindingMgr.AddSetter("LIGHTB2", value => lightStates["lightB2"] = (bool)value);
-                so.BindingMgr.AddSetter("LIGHTB3", value => lightStates["lightB3"] = (bool)value);
-                so.BindingMgr.AddSetter("LIGHTB4", value => lightStates["lightB4"] = (bool)value);
-                so.BindingMgr.AddSetter("LIGHTB5", value => lightStates["lightB5"] = (bool)value);
-                so.BindingMgr.AddSetter("LIGHTB6", value => lightStates["lightB6"] = (bool)value);
-
-                so.BindingMgr.AddSetter("BUTTONB0", value => buttonStates["buttonB0"] = (bool)value);
-                so.BindingMgr.AddSetter("BUTTONB1", value => buttonStates["buttonB1"] = (bool)value);
-                so.BindingMgr.AddSetter("BUTTONB2", value => buttonStates["buttonB2"] = (bool)value);
-                so.BindingMgr.AddSetter("BUTTONB3", value => buttonStates["buttonB3"] = (bool)value);
-                so.BindingMgr.AddSetter("BUTTONB4", value => buttonStates["buttonB4"] = (bool)value);
-                so.BindingMgr.AddSetter("BUTTONB5", value => buttonStates["buttonB5"] = (bool)value);
-                so.BindingMgr.AddSetter("BUTTONB6", value => buttonStates["buttonB6"] = (bool)value);
-
-                so.BindingMgr.AddSetter("LIGHTB0LABEL", value => lightLabels["lightB0"] = (string)value);
-                so.BindingMgr.AddSetter("LIGHTB1LABEL", value => lightLabels["lightB1"] = (string)value);
-                so.BindingMgr.AddSetter("LIGHTB2LABEL", value => lightLabels["lightB2"] = (string)value);
-                so.BindingMgr.AddSetter("LIGHTB3LABEL", value => lightLabels["lightB3"] = (string)value);
-                so.BindingMgr.AddSetter("LIGHTB4LABEL", value => lightLabels["lightB4"] = (string)value);
-                so.BindingMgr.AddSetter("LIGHTB5LABEL", value => lightLabels["lightB5"] = (string)value);
-                so.BindingMgr.AddSetter("LIGHTB6LABEL", value => lightLabels["lightB6"] = (string)value);
-
-                so.BindingMgr.AddSetter("BUTTONB0LABEL", value => buttonLabels["buttonB0"] = (string)value);
-                so.BindingMgr.AddSetter("BUTTONB1LABEL", value => buttonLabels["buttonB1"] = (string)value);
-                so.BindingMgr.AddSetter("BUTTONB2LABEL", value => buttonLabels["buttonB2"] = (string)value);
-                so.BindingMgr.AddSetter("BUTTONB3LABEL", value => buttonLabels["buttonB3"] = (string)value);
-                so.BindingMgr.AddSetter("BUTTONB4LABEL", value => buttonLabels["buttonB4"] = (string)value);
-                so.BindingMgr.AddSetter("BUTTONB5LABEL", value => buttonLabels["buttonB5"] = (string)value);
-                so.BindingMgr.AddSetter("BUTTONB6LABEL", value => buttonLabels["buttonB6"] = (string)value);
-            }
+            so.BindingMgr.AddSetter("BUTTON0LABEL", value => buttonLabels["buttonT0"] = (string)value);
+            so.BindingMgr.AddSetter("BUTTON1LABEL", value => buttonLabels["buttonT1"] = (string)value);
+            so.BindingMgr.AddSetter("BUTTON2LABEL", value => buttonLabels["buttonT2"] = (string)value);
+            so.BindingMgr.AddSetter("BUTTON3LABEL", value => buttonLabels["buttonT3"] = (string)value);
+            so.BindingMgr.AddSetter("BUTTON4LABEL", value => buttonLabels["buttonT4"] = (string)value);
+            so.BindingMgr.AddSetter("BUTTON5LABEL", value => buttonLabels["buttonT5"] = (string)value);
+            so.BindingMgr.AddSetter("BUTTON6LABEL", value => buttonLabels["buttonT6"] = (string)value);
+            so.BindingMgr.AddSetter("BUTTON7LABEL", value => buttonLabels["buttonB0"] = (string)value);
+            so.BindingMgr.AddSetter("BUTTON8LABEL", value => buttonLabels["buttonB1"] = (string)value);
+            so.BindingMgr.AddSetter("BUTTON9LABEL", value => buttonLabels["buttonB2"] = (string)value);
+            so.BindingMgr.AddSetter("BUTTON10LABEL", value => buttonLabels["buttonB3"] = (string)value);
+            so.BindingMgr.AddSetter("BUTTON11LABEL", value => buttonLabels["buttonB4"] = (string)value);
+            so.BindingMgr.AddSetter("BUTTON12LABEL", value => buttonLabels["buttonB5"] = (string)value);
+            so.BindingMgr.AddSetter("BUTTON13LABEL", value => buttonLabels["buttonB6"] = (string)value);
         }
 
         void SetLights()

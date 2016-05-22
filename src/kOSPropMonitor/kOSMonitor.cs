@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using kOS;
-using kOS.Safe.UserIO;
 using kOS.Safe.Screen;
 using kOS.Module;
 
@@ -81,6 +80,7 @@ namespace kOSPropMonitor
         private List<int> multiFunctionButtonsPOS;
         private char[] delimiterChars = { ' ', ',', '.', ':'};
         private Dictionary<string, string> response_formats;
+        private Guid guid;
 
         //kOS Processor Variables
         private bool isPowered = false;
@@ -92,7 +92,6 @@ namespace kOSPropMonitor
 
         //kOS Terminal Variables
         private bool consumeEvent;
-        private const string CONTROL_LOCKOUT = "kOSPropMonitor";
         private bool isLocked = false;
         private string response = "kOS Terminal Standing By";
 
@@ -102,13 +101,6 @@ namespace kOSPropMonitor
         private IScreenSnapShot mostRecentScreen;
         private int screenWidth;
         private int screenHeight;
-
-        //Keyboard Memory Variables
-        private KeyBinding rememberThrottleCutoffKey;
-        private KeyBinding rememberThrottleFullKey;
-        private KeyBinding rememberCameraResetKey;
-        private KeyBinding rememberCameraModeKey;
-        private KeyBinding rememberCameraViewKey;
 
         public override void OnUpdate()
         {
@@ -149,20 +141,14 @@ namespace kOSPropMonitor
                                 //Add bound variables
                                 AddGettersAndSetters(processor_shares[kvpair.Key]);
                                 wasOff.Remove(kvpair.Key);
-                                Debug.Log("kOSPropMonitor Re-Initialized Processor");
+                                Debug.Log("kOSMonitor Re-Initialized Processor");
                             }
                             else
                             {
                                 wasOff[kvpair.Key] += Time.deltaTime;
-                                Debug.Log("kOSPropMonitor Initializing Processor...");
+                                //Debug.Log("kOSMonitor Initializing Processor...");
                             }
                         }
-                    }
-
-                    //Process keystrokes
-                    if (isLocked)
-                    {
-                        ProcessKeyEvents();
                     }
 
                     //Buffer the console and Processor List
@@ -179,7 +165,7 @@ namespace kOSPropMonitor
                     //Format Response
                     response = Utilities.Format(template, response_formats);
                     SetButtons();
-                    SetLights();
+                    SetFlags();
 
                     //Consume event - IDEK
                     if (consumeEvent)
@@ -195,7 +181,7 @@ namespace kOSPropMonitor
             }
             else if (isLocked)
             {
-                Unlock();
+                ToggleLock();
             }
         }
 
@@ -230,12 +216,8 @@ namespace kOSPropMonitor
             //Single-Init Actions
             if (!initialized)
             {
-                //Set Key Binding Memory
-                rememberCameraResetKey = GameSettings.CAMERA_RESET;
-                rememberCameraModeKey = GameSettings.CAMERA_MODE;
-                rememberCameraViewKey = GameSettings.CAMERA_NEXT;
-                rememberThrottleCutoffKey = GameSettings.THROTTLE_CUTOFF;
-                rememberThrottleFullKey = GameSettings.THROTTLE_FULL;
+                //Create GUID
+                guid = Guid.NewGuid();
 
                 //Split Multi-Function Buttons String
                 multiFunctionButtonsPOS = new List<int>();
@@ -254,14 +236,17 @@ namespace kOSPropMonitor
                 kPMCore.fetch.RegisterVessel(this.vessel.id);
                 vt = kPMCore.fetch.GetVesselTrack(this.vessel.id);
 
+                //Register monitor and Keyboard Delegate
+                kPMCore.fetch.RegisterMonitor(this, guid);
+
                 //Register Buttons and Flags
-                for (int i = 0; i < multiFunctionButtonsPOS.Count; i++)
+                for (int i = vt.buttonLabels.Count; i < multiFunctionButtonsPOS.Count; i++)
                 {
                     vt.buttonLabels["button" + i] = buttonEmptyLabel;
                     vt.buttonStates["button" + i] = false;
                 }
 
-                for (int i = 0; i < flagCount; i++)
+                for (int i = vt.flagLabels.Count; i < flagCount; i++)
                 {
                     vt.flagLabels["flag" + i] = flagEmptyLabel;
                     vt.flagStates["flag" + i] = false;
@@ -276,7 +261,7 @@ namespace kOSPropMonitor
                 initialized = true;
             }
 
-            Debug.Log("kOSPropMonitor Initialized!");
+            Debug.Log("kOSMonitor Initialized!");
         }
 
         public string ContentProcessor(int screenWidth, int screenHeight)
@@ -352,7 +337,7 @@ namespace kOSPropMonitor
                     //Reset getters and setters on power-up
                     if (!isPowered)
                     {
-                        Debug.Log("kOSPropMonitor Adding Boot-Up Event");
+                        Debug.Log("kOSMonitor Adding Boot-Up Event");
                         processors[current_processor_id].TogglePower();
                         wasOff[current_processor_id] = 0.00f;
                     }
@@ -400,7 +385,7 @@ namespace kOSPropMonitor
             string FILE_NAME = Path.Combine(Path.Combine(KSPUtil.ApplicationRootPath, "GameData"), template);
             if (!File.Exists(FILE_NAME))
             {
-                UnityEngine.Debug.Log(string.Format("kOSPropMonitor: Template {0} does not exist.", FILE_NAME));
+                UnityEngine.Debug.Log(string.Format("kOSMonitor: Template {0} does not exist.", FILE_NAME));
                 return;
             }
             using (StreamReader sr = File.OpenText(FILE_NAME))
@@ -474,6 +459,8 @@ namespace kOSPropMonitor
                 currentTextTint = textTintUnpowered;
             }
 
+            response_formats["currentCPU"] = currentTextTint + "CPU " + current_processor_id + "[#FFFFFF]";
+
             for (int processor_entry_count = 0; processor_entry_count < processors.Count / 4 + 1; processor_entry_count++)
             {
                 int current_position = processor_entry_count * 4;
@@ -485,7 +472,7 @@ namespace kOSPropMonitor
                     {
                         if (current_position + lrange >= processors.Count)
                         {
-                            response_formats["kCPU" + (lrange + 1)] = "       ";
+                            response_formats["CPU" + (lrange + 1)] = "       ";
                             continue;
                         }
 
@@ -502,11 +489,11 @@ namespace kOSPropMonitor
 
                         if (current_position + lrange == current_processor_id)
                         {
-                            response_formats["kCPU" + (lrange + 1)] = currentTextTint + "kCPU  " + (current_position + lrange) + "[#FFFFFF]";
+                            response_formats["CPU" + (lrange + 1)] = currentTextTint + " CPU  " + (current_position + lrange) + "[#FFFFFF]";
                         }
                         else
                         {
-                            response_formats["kCPU" + (lrange + 1)] = "kCPU  " + currentTextTint + (current_position + lrange) + "[#FFFFFF]";
+                            response_formats["CPU" + (lrange + 1)] = " CPU  " + currentTextTint + (current_position + lrange) + "[#FFFFFF]";
                         }
                     }
                     break;
@@ -522,7 +509,7 @@ namespace kOSPropMonitor
             for (int i = 0; i < vt.flagStates.Count; i ++)
             {
                 string flagname = "FLAG" + i;
-                Debug.Log("kOSPropMonitor: Registering Flag " + flagname);
+                Debug.Log("kOSMonitor: Registering Flag " + flagname);
                 so.BindingMgr.AddGetter(flagname, () => vt.flagStates[flagname.ToLower()]);
                 so.BindingMgr.AddSetter(flagname, value => vt.flagStates[flagname.ToLower()] = (bool)value);
 
@@ -533,7 +520,7 @@ namespace kOSPropMonitor
             for (int i = 0; i < vt.buttonStates.Count; i++)
             {
                 string buttonname = "BUTTON" + i;
-                Debug.Log("kOSPropMonitor: Registering Button " + buttonname);
+                Debug.Log("kOSMonitor: Registering Button " + buttonname);
                 so.BindingMgr.AddGetter(buttonname, () => vt.buttonStates[buttonname.ToLower()]);
                 so.BindingMgr.AddSetter(buttonname, value => vt.buttonStates[buttonname.ToLower()] = (bool)value);
                 
@@ -542,7 +529,7 @@ namespace kOSPropMonitor
             }
         }
 
-        void SetLights()
+        void SetFlags()
         {
             foreach (KeyValuePair<string, bool> kvpair in vt.flagStates)
             {
@@ -560,11 +547,11 @@ namespace kOSPropMonitor
                 {
                     response = response.Replace("{flagSide" + sub + "}", (color + flagSide + "[#FFFFFF]"));
                     response = response.Replace("{flagSideSmall" + sub + "}", (color + flagSideSmall + "[#FFFFFF]"));
-                    response = response.Replace("{flagLabel" + sub + "}", (vt.flagLabels[kvpair.Key]));
+                    response = response.Replace("{flagLabel" + sub + "}", (color + vt.flagLabels[kvpair.Key]) + "[#FFFFFF]");
                 }
                 catch
                 {
-                    Debug.Log("kOSPropMonitor: Error in templating for flags!");
+                    Debug.Log("kOSMonitor: Error in templating for flags!");
                 }
             }
         }
@@ -587,11 +574,11 @@ namespace kOSPropMonitor
                 {
                     response = response.Replace("{buttonSide" + sub + "}", (color + buttonSide + "[#FFFFFF]").ToString());
                     response = response.Replace("{buttonSideSmall" + sub + "}", (color + buttonSideSmall + "[#FFFFFF]").ToString());
-                    response = response.Replace("{buttonLabel" + sub + "}", (vt.buttonLabels["button" + sub]).ToString());
+                    response = response.Replace("{buttonLabel" + sub + "}", (color + vt.buttonLabels["button" + sub] + "[#FFFFFF]").ToString());
                 }
                 catch
                 {
-                    Debug.Log("kOSPropMonitor: Error in templating for buttons!");
+                    Debug.Log("kOSMonitor: Error in templating for buttons!");
                 }
             }
         }
@@ -599,141 +586,15 @@ namespace kOSPropMonitor
         //Keyboard Control
         public void ToggleLock()
         {
-            if (isLocked)
-                Unlock();
-            else
-                Lock();
+            kPMCore.fetch.ToggleLock(guid);
+            isLocked = kPMCore.fetch.IsLocked(guid);
         }
 
-        void Lock()
+        public void Type(char command)
         {
-            if (isLocked) return;
-
-            isLocked = true;
-
-            InputLockManager.SetControlLock(CONTROL_LOCKOUT);
-
-            // This seems to be the only way to force KSP to let me lock out the "X" throttle
-            // key.  It seems to entirely bypass the logic of every other keypress in the game,
-            // so the only way to fix it is to use the keybindings system from the Setup screen.
-            // When the terminal is focused, the THROTTLE_CUTOFF action gets unbound, and then
-            // when its unfocused later, its put back the way it was:
-            GameSettings.CAMERA_RESET = new KeyBinding(KeyCode.None);
-            GameSettings.CAMERA_MODE = new KeyBinding(KeyCode.None);
-            GameSettings.CAMERA_NEXT = new KeyBinding(KeyCode.None);
-            GameSettings.THROTTLE_CUTOFF = new KeyBinding(KeyCode.None);
-            GameSettings.THROTTLE_FULL = new KeyBinding(KeyCode.None);
-        }
-
-        void Unlock()
-        {
-            if (!isLocked) return;
-
-            isLocked = false;
-
-            InputLockManager.RemoveControlLock(CONTROL_LOCKOUT);
-            
-            // This seems to be the only way to force KSP to let me lock out the "X" throttle
-            // key.  It seems to entirely bypass the logic of every other keypress in the game:
-            GameSettings.THROTTLE_CUTOFF = rememberThrottleCutoffKey;
-            GameSettings.THROTTLE_FULL = rememberThrottleFullKey;
-            GameSettings.CAMERA_RESET = rememberCameraResetKey;
-            GameSettings.CAMERA_MODE = rememberCameraModeKey;
-            GameSettings.CAMERA_NEXT = rememberCameraViewKey;
-        }
-
-        void ProcessKeyEvents()
-        {
-            Event e = Event.current;
-            
-            // This *HAS* to be up here. I have no idea what's causing this.
-            if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)
-            {
-                Type((char)UnicodeCommand.STARTNEXTLINE);
-            }
-
-            if (e.type == EventType.KeyDown)
-            {
-                // Unity handles some keys in a particular way
-                // e.g. Keypad7 is mapped to 0xffb7 instead of 0x37
-                var c = (char)(e.character & 0x007f);
-
-                // command sequences
-                if (e.keyCode == KeyCode.C && e.control) // Ctrl+C
-                {
-                    Type((char)UnicodeCommand.BREAK);
-                    consumeEvent = true;
-                    return;
-                }
-                // Command used to be Control-shift-X, now we don't care if shift is down aymore, to match the telnet expereince
-                // where there is no such thing as "uppercasing" a control char.
-                if ((e.keyCode == KeyCode.X && e.control) ||
-                    (e.keyCode == KeyCode.D && e.control) // control-D to match the telnet experience
-                   )
-                {
-                    Type((char)0x000d);
-                    consumeEvent = true;
-                    return;
-                }
-
-                if (e.keyCode == KeyCode.A && e.control)
-                {
-                    Type((char)0x0001);
-                    consumeEvent = true;
-                    return;
-                }
-
-                if (e.keyCode == KeyCode.E && e.control)
-                {
-                    Type((char)0x0005);
-                    consumeEvent = true;
-                    return;
-                }
-
-                if (0x20 <= c && c < 0x7f) // printable characters
-                {
-                    Type(c);
-                    consumeEvent = true;
-                    cursorBlinkTime = 0.0f; // Don't blink while the user is still actively typing.
-                }
-
-                else if (e.keyCode != KeyCode.None)
-                {
-                    consumeEvent = true;
-                    switch (e.keyCode)
-                    {
-                        case KeyCode.Tab: Type('\t'); break;
-                        case KeyCode.LeftArrow: Type((char)UnicodeCommand.LEFTCURSORONE); break;
-                        case KeyCode.RightArrow: Type((char)UnicodeCommand.RIGHTCURSORONE); break;
-                        case KeyCode.UpArrow: Type((char)UnicodeCommand.UPCURSORONE); break;
-                        case KeyCode.DownArrow: Type((char)UnicodeCommand.DOWNCURSORONE); break;
-                        case KeyCode.Home: Type((char)UnicodeCommand.HOMECURSOR); break;
-                        case KeyCode.End: Type((char)UnicodeCommand.ENDCURSOR); break;
-                        case KeyCode.PageUp: Type((char)UnicodeCommand.PAGEUPCURSOR); break;
-                        case KeyCode.PageDown: Type((char)UnicodeCommand.PAGEDOWNCURSOR); break;
-                        case KeyCode.Delete: Type((char)UnicodeCommand.DELETERIGHT); break;
-                        case KeyCode.Backspace: Type((char)UnicodeCommand.DELETELEFT); break;
-                        
-                        //THESE ARE NOT WORKING FOR ME.
-                        case KeyCode.KeypadEnter:  // (deliberate fall through to next case)
-                        case KeyCode.Return: Type((char)UnicodeCommand.STARTNEXTLINE); break;
-
-                        // More can be added to the list here to support things like F1, F2, etc.  But at the moment we don't use them yet.
-
-                        // default: ignore and allow the event to pass through to whatever else wants to read it:
-                        default: consumeEvent = false; break;
-                    }
-                    cursorBlinkTime = 0.0f;// Don't blink while the user is still actively typing.
-                }
-            }
-        }
-
-        void Type(char command)
-        {
-            if (processor_shares[current_processor_id] != null && processor_shares[current_processor_id].Interpreter != null)
-            {
-                processor_shares[current_processor_id].Window.ProcessOneInputChar(command, null);
-            }
+            processor_shares[current_processor_id].Window.ProcessOneInputChar(command, null);
+            cursorBlinkTime = 0.0f;// Don't blink while the user is still actively typing.
+            consumeEvent = true;
         }
     }
 }

@@ -1,13 +1,13 @@
-{buttonSideT0}     {buttonSideT1}     {buttonSideT2}     {buttonSideT3}     {buttonSideT4}     {buttonSideT5}     {buttonSideT6}
-{buttonSideSmallT0}{buttonLabelT0}{buttonSideSmallT0}     {buttonSideSmallT1}{buttonLabelT1}{buttonSideSmallT1}     {buttonSideSmallT2}{buttonLabelT2}{buttonSideSmallT2}     {buttonSideSmallT3}{buttonLabelT3}{buttonSideSmallT3}     {buttonSideSmallT4}{buttonLabelT4}{buttonSideSmallT4}     {buttonSideSmallT5}{buttonLabelT5}{buttonSideSmallT5}     {buttonSideSmallT6}{buttonLabelT6}{buttonSideSmallT6}
-{buttonSideT0}     {buttonSideT1}     {buttonSideT2}     {buttonSideT3}     {buttonSideT4}     {buttonSideT5}     {buttonSideT6}
+{buttonSide0}     {buttonSide1}     {buttonSide2}     {buttonSide3}     {buttonSide4}     {buttonSide5}     {buttonSide6}
+{buttonSideSmall0}{buttonLabel0}{buttonSideSmall0}     {buttonSideSmall1}{buttonLabel1}{buttonSideSmall1}     {buttonSideSmall2}{buttonLabel2}{buttonSideSmall2}     {buttonSideSmall3}{buttonLabel3}{buttonSideSmall3}     {buttonSideSmall4}{buttonLabel4}{buttonSideSmall4}     {buttonSideSmall5}{buttonLabel5}{buttonSideSmall5}     {buttonSideSmall6}{buttonLabel6}{buttonSideSmall6}
+{buttonSide0}     {buttonSide1}     {buttonSide2}     {buttonSide3}     {buttonSide4}     {buttonSide5}     {buttonSide6}
 ====================================================================================================
-## #############   {lightSideT0} {lightSideT1} {lightSideT2} {lightSideT3} {lightSideT4} {lightSideT5} {lightSideT6}  ##
-## #  {kCPU1}  #   {lightSideSmallT0}{lightLabelT0}{lightSideSmallT0} {lightSideSmallT1}{lightLabelT1}{lightSideSmallT1} {lightSideSmallT2}{lightLabelT2}{lightSideSmallT2} {lightSideSmallT3}{lightLabelT3}{lightSideSmallT3} {lightSideSmallT4}{lightLabelT4}{lightSideSmallT4} {lightSideSmallT5}{lightLabelT5}{lightSideSmallT5} {lightSideSmallT6}{lightLabelT6}{lightSideSmallT6}  ##
-## #  {kCPU2}  #   {lightSideT0} {lightSideT1} {lightSideT2} {lightSideT3} {lightSideT4} {lightSideT5} {lightSideT6}  ##
-## #  {kCPU3}  #   {lightSideB0} {lightSideB1} {lightSideB2} {lightSideB3} {lightSideB4} {lightSideB5} {lightSideB6}  ##
-## #  {kCPU4}  #   {lightSideSmallB0}{lightLabelB0}{lightSideSmallB0} {lightSideSmallB1}{lightLabelB1}{lightSideSmallB1} {lightSideSmallB2}{lightLabelB2}{lightSideSmallB2} {lightSideSmallB3}{lightLabelB3}{lightSideSmallB3} {lightSideSmallB4}{lightLabelB4}{lightSideSmallB4} {lightSideSmallB5}{lightLabelB5}{lightSideSmallB5} {lightSideSmallB6}{lightLabelB6}{lightSideSmallB6}  ##
-## #############   {lightSideB0} {lightSideB1} {lightSideB2} {lightSideB3} {lightSideB4} {lightSideB5} {lightSideB6}  ##
+## #############   {flagSide0} {flagSide1} {flagSide2} {flagSide3} {flagSide4} {flagSide5} {flagSide6}   ##
+## #  {kCPU1}  #   {flagSideSmall0}{flagLabel0}{flagSideSmall0} {flagSideSmall1}{flagLabel1}{flagSideSmall1} {flagSideSmall2}{flagLabel2}{flagSideSmall2} {flagSideSmall3}{flagLabel3}{flagSideSmall3} {flagSideSmall4}{flagLabel4}{flagSideSmall4} {flagSideSmall5}{flagLabel5}{flagSideSmall5} {flagSideSmall6}{flagLabel6}{flagSideSmall6}   ##
+## #  {kCPU2}  #   {flagSide0} {flagSide1} {flagSide2} {flagSide3} {flagSide4} {flagSide5} {flagSide6}   ##
+## #  {kCPU3}  #   {flagSide7} {flagSide8} {flagSide9} {flagSide10} {flagSide11} {flagSide12} {flagSide13}   ##
+## #  {kCPU4}  #   {flagSideSmall7}{flagLabel7}{flagSideSmall7} {flagSideSmall8}{flagLabel8}{flagSideSmall8} {flagSideSmall9}{flagLabel9}{flagSideSmall9} {flagSideSmall10}{flagLabel10}{flagSideSmall10} {flagSideSmall11}{flagLabel11}{flagSideSmall11} {flagSideSmall12}{flagLabel12}{flagSideSmall12} {flagSideSmall13}{flagLabel13}{flagSideSmall13}   ##
+## #############   {flagSide7} {flagSide8} {flagSide9} {flagSide10} {flagSide11} {flagSide12} {flagSide13}   ##
 ====================================================================================================
 {l1}
 {l2}
@@ -45,6 +45,6 @@
 {l34}
 {l35}
 ====================================================================================================
-{buttonSideB0}     {buttonSideB1}     {buttonSideB2}     {buttonSideB3}     {buttonSideB4}     {buttonSideB5}     {buttonSideB6}
-{buttonSideSmallB0}{buttonLabelB0}{buttonSideSmallB0}     {buttonSideSmallB1}{buttonLabelB1}{buttonSideSmallB1}     {buttonSideSmallB2}{buttonLabelB2}{buttonSideSmallB2}     {buttonSideSmallB3}{buttonLabelB3}{buttonSideSmallB3}     {buttonSideSmallB4}{buttonLabelB4}{buttonSideSmallB4}     {buttonSideSmallB5}{buttonLabelB5}{buttonSideSmallB5}     {buttonSideSmallB6}{buttonLabelB6}{buttonSideSmallB6}
-{buttonSideB0}     {buttonSideB1}     {buttonSideB2}     {buttonSideB3}     {buttonSideB4}     {buttonSideB5}     {buttonSideB6}
+{buttonSide7}     {buttonSide8}     {buttonSide9}     {buttonSide10}     {buttonSide11}     {buttonSide12}     {buttonSide13}
+{buttonSideSmall7}{buttonLabel7}{buttonSideSmall7}     {buttonSideSmall8}{buttonLabel8}{buttonSideSmall8}     {buttonSideSmall9}{buttonLabel9}{buttonSideSmall9}     {buttonSideSmall10}{buttonLabel10}{buttonSideSmall10}     {buttonSideSmall11}{buttonLabel11}{buttonSideSmall11}     {buttonSideSmall12}{buttonLabel12}{buttonSideSmall12}     {buttonSideSmall13}{buttonLabel13}{buttonSideSmall13}
+{buttonSide7}     {buttonSide8}     {buttonSide9}     {buttonSide10}     {buttonSide11}     {buttonSide12}     {buttonSide13}

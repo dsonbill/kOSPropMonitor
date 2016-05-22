@@ -21,38 +21,8 @@ namespace kOSPropMonitor
         public int connectButton = 4;
         [KSPField]
         public int toggleProcessorPowerButton = 9;
-
-        //Top Buttons
         [KSPField]
-        public int topButton0 = 17;
-        [KSPField]
-        public int topButton1 = 18;
-        [KSPField]
-        public int topButton2 = 19;
-        [KSPField]
-        public int topButton3 = 20;
-        [KSPField]
-        public int topButton4 = 21;
-        [KSPField]
-        public int topButton5 = 22;
-        [KSPField]
-        public int topButton6 = 23;
-
-        //Bottom Buttons
-        [KSPField]
-        public int bottomButton0 = 10;
-        [KSPField]
-        public int bottomButton1 = 11;
-        [KSPField]
-        public int bottomButton2 = 12;
-        [KSPField]
-        public int bottomButton3 = 13;
-        [KSPField]
-        public int bottomButton4 = 14;
-        [KSPField]
-        public int bottomButton5 = 15;
-        [KSPField]
-        public int bottomButton6 = 16;
+        public string multiFunctionButtons = "17,18,19,20,21,22,23,10,11,12,13,14,15,16";
 
         //Directional Buttons
         [KSPField]
@@ -72,6 +42,8 @@ namespace kOSPropMonitor
 
         //Terminal Fields
         [KSPField]
+        public int flagCount = 14;
+        [KSPField]
         public string template = "";
         [KSPField]
         public string buttonSide = "##########";
@@ -80,11 +52,11 @@ namespace kOSPropMonitor
         [KSPField]
         public string buttonEmptyLabel = "        ";
         [KSPField]
-        public string lightSide = "##########";
+        public string flagSide = "##########";
         [KSPField]
-        public string lightSideSmall = "#";
+        public string flagSideSmall = "#";
         [KSPField]
-        public string lightEmptyLabel = "        ";
+        public string flagEmptyLabel = "        ";
         [KSPField]
         public string textTint = "[#009900ff]";
         [KSPField]
@@ -102,19 +74,16 @@ namespace kOSPropMonitor
         [KSPField]
         public int consoleHeight = 20;
 
-        //General State Variables
+        //General Variables
         private bool initialized = false;
-        private string response = "kOS Terminal Standing By";
-        private bool isPowered = false;
+        private kPMVesselTrack vt;
         private int lastPartCount = 0;
+        private List<int> multiFunctionButtonsPOS;
+        private char[] delimiterChars = { ' ', ',', '.', ':'};
         private Dictionary<string, string> response_formats;
-        private Dictionary<string, bool> buttonStates;
-        private Dictionary<string, string> buttonLabels;
-        private Dictionary<int, string> buttonID;
-        private Dictionary<string, bool> lightStates;
-        private Dictionary<string, string> lightLabels;
 
         //kOS Processor Variables
+        private bool isPowered = false;
         private bool processorIsInstalled;
         private int current_processor_id = 0;
         private List<SharedObjects> processor_shares;
@@ -125,12 +94,12 @@ namespace kOSPropMonitor
         private bool consumeEvent;
         private const string CONTROL_LOCKOUT = "kOSPropMonitor";
         private bool isLocked = false;
+        private string response = "kOS Terminal Standing By";
 
         //private string consoleBuffer;
         private float cursorBlinkTime;
         private string currentTextTint;
         private IScreenSnapShot mostRecentScreen;
-        private DateTime lastBufferGet;
         private int screenWidth;
         private int screenHeight;
 
@@ -258,12 +227,6 @@ namespace kOSPropMonitor
             //Set Vessel Part Cound
             lastPartCount = this.vessel.parts.Count;
 
-            //Add Getters and Setters
-            foreach (SharedObjects so in processor_shares)
-            {
-                AddGettersAndSetters(so);
-            }
-
             //Single-Init Actions
             if (!initialized)
             {
@@ -274,88 +237,41 @@ namespace kOSPropMonitor
                 rememberThrottleCutoffKey = GameSettings.THROTTLE_CUTOFF;
                 rememberThrottleFullKey = GameSettings.THROTTLE_FULL;
 
+                //Split Multi-Function Buttons String
+                multiFunctionButtonsPOS = new List<int>();
+                foreach(string id in multiFunctionButtons.Split(delimiterChars))
+                {
+                    int id_int;
+                    if (Int32.TryParse(id, out id_int))
+                    {
+                        multiFunctionButtonsPOS.Add(id_int);
+                    }
+                }
+
                 ReadTemplate();
 
-                buttonLabels = new Dictionary<string, string>();
-                buttonLabels["buttonT0"] = buttonEmptyLabel;
-                buttonLabels["buttonT1"] = buttonEmptyLabel;
-                buttonLabels["buttonT2"] = buttonEmptyLabel;
-                buttonLabels["buttonT3"] = buttonEmptyLabel;
-                buttonLabels["buttonT4"] = buttonEmptyLabel;
-                buttonLabels["buttonT5"] = buttonEmptyLabel;
-                buttonLabels["buttonT6"] = buttonEmptyLabel;
-                buttonLabels["buttonB0"] = buttonEmptyLabel;
-                buttonLabels["buttonB1"] = buttonEmptyLabel;
-                buttonLabels["buttonB2"] = buttonEmptyLabel;
-                buttonLabels["buttonB3"] = buttonEmptyLabel;
-                buttonLabels["buttonB4"] = buttonEmptyLabel;
-                buttonLabels["buttonB5"] = buttonEmptyLabel;
-                buttonLabels["buttonB6"] = buttonEmptyLabel;
+                //Register Vessel and Get Track
+                kPMCore.fetch.RegisterVessel(this.vessel.id);
+                vt = kPMCore.fetch.GetVesselTrack(this.vessel.id);
 
-                buttonStates = new Dictionary<string, bool>();
-                buttonStates["buttonT0"] = false;
-                buttonStates["buttonT1"] = false;
-                buttonStates["buttonT2"] = false;
-                buttonStates["buttonT3"] = false;
-                buttonStates["buttonT4"] = false;
-                buttonStates["buttonT5"] = false;
-                buttonStates["buttonT6"] = false;
-                buttonStates["buttonB0"] = false;
-                buttonStates["buttonB1"] = false;
-                buttonStates["buttonB2"] = false;
-                buttonStates["buttonB3"] = false;
-                buttonStates["buttonB4"] = false;
-                buttonStates["buttonB5"] = false;
-                buttonStates["buttonB6"] = false;
+                //Register Buttons and Flags
+                for (int i = 0; i < multiFunctionButtonsPOS.Count; i++)
+                {
+                    vt.buttonLabels["button" + i] = buttonEmptyLabel;
+                    vt.buttonStates["button" + i] = false;
+                }
 
-                buttonID = new Dictionary<int, string>();
-                buttonID[topButton0] = "T0";
-                buttonID[topButton1] = "T1";
-                buttonID[topButton2] = "T2";
-                buttonID[topButton3] = "T3";
-                buttonID[topButton4] = "T4";
-                buttonID[topButton5] = "T5";
-                buttonID[topButton6] = "T6";
-                buttonID[bottomButton0] = "B0";
-                buttonID[bottomButton1] = "B1";
-                buttonID[bottomButton2] = "B2";
-                buttonID[bottomButton3] = "B3";
-                buttonID[bottomButton4] = "B4";
-                buttonID[bottomButton5] = "B5";
-                buttonID[bottomButton6] = "B6";
+                for (int i = 0; i < flagCount; i++)
+                {
+                    vt.flagLabels["flag" + i] = flagEmptyLabel;
+                    vt.flagStates["flag" + i] = false;
+                }
 
-                lightLabels = new Dictionary<string, string>();
-                lightLabels["lightT0"] = buttonEmptyLabel;
-                lightLabels["lightT1"] = buttonEmptyLabel;
-                lightLabels["lightT2"] = buttonEmptyLabel;
-                lightLabels["lightT3"] = buttonEmptyLabel;
-                lightLabels["lightT4"] = buttonEmptyLabel;
-                lightLabels["lightT5"] = buttonEmptyLabel;
-                lightLabels["lightT6"] = buttonEmptyLabel;
-                lightLabels["lightB0"] = buttonEmptyLabel;
-                lightLabels["lightB1"] = buttonEmptyLabel;
-                lightLabels["lightB2"] = buttonEmptyLabel;
-                lightLabels["lightB3"] = buttonEmptyLabel;
-                lightLabels["lightB4"] = buttonEmptyLabel;
-                lightLabels["lightB5"] = buttonEmptyLabel;
-                lightLabels["lightB6"] = buttonEmptyLabel;
-
-
-                lightStates = new Dictionary<string, bool>();
-                lightStates["lightT0"] = false;
-                lightStates["lightT1"] = false;
-                lightStates["lightT2"] = false;
-                lightStates["lightT3"] = false;
-                lightStates["lightT4"] = false;
-                lightStates["lightT5"] = false;
-                lightStates["lightT6"] = false;
-                lightStates["lightB0"] = false;
-                lightStates["lightB1"] = false;
-                lightStates["lightB2"] = false;
-                lightStates["lightB3"] = false;
-                lightStates["lightB4"] = false;
-                lightStates["lightB5"] = false;
-                lightStates["lightB6"] = false;
+                //Add Getters and Setters
+                foreach (SharedObjects so in processor_shares)
+                {
+                    AddGettersAndSetters(so);
+                }
 
                 initialized = true;
             }
@@ -455,9 +371,10 @@ namespace kOSPropMonitor
         //Button Utilities
         void ProcessProgramButton(int ID)
         {
-            if (buttonID.ContainsKey(ID))
+            if (multiFunctionButtonsPOS.Contains(ID))
             {
-                buttonStates["button" + buttonID[ID]] = !buttonStates["button" + buttonID[ID]];
+                int bID = multiFunctionButtonsPOS.IndexOf(ID);
+                vt.buttonStates["button" + bID] = !vt.buttonStates["button" + bID];
             }
         }
 
@@ -500,15 +417,7 @@ namespace kOSPropMonitor
 
         void GetNewestBuffer()
         {
-            DateTime newTime = DateTime.Now;
-
-            // Throttle it back so the faster Update() rates don't cause pointlessly repeated work:
-            // Needs to be no faster than the fastest theoretical typist or script might change the view.
-            if (newTime > lastBufferGet + TimeSpan.FromMilliseconds(50)) // = 1/20th second.
-            {
-                mostRecentScreen = new ScreenSnapShot(processor_shares[current_processor_id].Screen);
-                lastBufferGet = newTime;
-            }
+            mostRecentScreen = new ScreenSnapShot(processor_shares[current_processor_id].Screen);
         }
 
         void BufferConsole()
@@ -609,105 +518,32 @@ namespace kOSPropMonitor
         {
             //Looping doesn't seem to work - I'm sure there's another way to do this, but this is simple enough
 
-            // States
-            so.BindingMgr.AddGetter("LIGHT0", () => lightStates["lightT0"]);
-            so.BindingMgr.AddGetter("LIGHT1", () => lightStates["lightT1"]);
-            so.BindingMgr.AddGetter("LIGHT2", () => lightStates["lightT2"]);
-            so.BindingMgr.AddGetter("LIGHT3", () => lightStates["lightT3"]);
-            so.BindingMgr.AddGetter("LIGHT4", () => lightStates["lightT4"]);
-            so.BindingMgr.AddGetter("LIGHT5", () => lightStates["lightT5"]);
-            so.BindingMgr.AddGetter("LIGHT6", () => lightStates["lightT6"]);
-            so.BindingMgr.AddGetter("LIGHT7", () => lightStates["lightB0"]);
-            so.BindingMgr.AddGetter("LIGHT8", () => lightStates["lightB1"]);
-            so.BindingMgr.AddGetter("LIGHT9", () => lightStates["lightB2"]);
-            so.BindingMgr.AddGetter("LIGHT10", () => lightStates["lightB3"]);
-            so.BindingMgr.AddGetter("LIGHT11", () => lightStates["lightB4"]);
-            so.BindingMgr.AddGetter("LIGHT12", () => lightStates["lightB5"]);
-            so.BindingMgr.AddGetter("LIGHT13", () => lightStates["lightB6"]);
+            //Flags
+            for (int i = 0; i < vt.flagStates.Count; i ++)
+            {
+                so.BindingMgr.AddGetter("FLAG" + i, () => vt.flagStates["flag" + i]);
+                so.BindingMgr.AddSetter("FLAG" + i, value => vt.flagStates["flag" + i] = (bool)value);
 
-            so.BindingMgr.AddGetter("BUTTON0", () => buttonStates["buttonT0"]);
-            so.BindingMgr.AddGetter("BUTTON1", () => buttonStates["buttonT1"]);
-            so.BindingMgr.AddGetter("BUTTON2", () => buttonStates["buttonT2"]);
-            so.BindingMgr.AddGetter("BUTTON3", () => buttonStates["buttonT3"]);
-            so.BindingMgr.AddGetter("BUTTON4", () => buttonStates["buttonT4"]);
-            so.BindingMgr.AddGetter("BUTTON5", () => buttonStates["buttonT5"]);
-            so.BindingMgr.AddGetter("BUTTON6", () => buttonStates["buttonT6"]);
-            so.BindingMgr.AddGetter("BUTTON7", () => buttonStates["buttonB0"]);
-            so.BindingMgr.AddGetter("BUTTON8", () => buttonStates["buttonB1"]);
-            so.BindingMgr.AddGetter("BUTTON9", () => buttonStates["buttonB2"]);
-            so.BindingMgr.AddGetter("BUTTON10", () => buttonStates["buttonB3"]);
-            so.BindingMgr.AddGetter("BUTTON11", () => buttonStates["buttonB4"]);
-            so.BindingMgr.AddGetter("BUTTON12", () => buttonStates["buttonB5"]);
-            so.BindingMgr.AddGetter("BUTTON13", () => buttonStates["buttonB6"]);
-
-            so.BindingMgr.AddSetter("LIGHT0", value => lightStates["lightT0"] = (bool)value);
-            so.BindingMgr.AddSetter("LIGHT1", value => lightStates["lightT1"] = (bool)value);
-            so.BindingMgr.AddSetter("LIGHT2", value => lightStates["lightT2"] = (bool)value);
-            so.BindingMgr.AddSetter("LIGHT3", value => lightStates["lightT3"] = (bool)value);
-            so.BindingMgr.AddSetter("LIGHT4", value => lightStates["lightT4"] = (bool)value);
-            so.BindingMgr.AddSetter("LIGHT5", value => lightStates["lightT5"] = (bool)value);
-            so.BindingMgr.AddSetter("LIGHT6", value => lightStates["lightT6"] = (bool)value);
-            so.BindingMgr.AddSetter("LIGHT7", value => lightStates["lightB0"] = (bool)value);
-            so.BindingMgr.AddSetter("LIGHT8", value => lightStates["lightB1"] = (bool)value);
-            so.BindingMgr.AddSetter("LIGHT9", value => lightStates["lightB2"] = (bool)value);
-            so.BindingMgr.AddSetter("LIGHT10", value => lightStates["lightB3"] = (bool)value);
-            so.BindingMgr.AddSetter("LIGHT11", value => lightStates["lightB4"] = (bool)value);
-            so.BindingMgr.AddSetter("LIGHT12", value => lightStates["lightB5"] = (bool)value);
-            so.BindingMgr.AddSetter("LIGHT13", value => lightStates["lightB6"] = (bool)value);
-
-            so.BindingMgr.AddSetter("BUTTON0", value => buttonStates["buttonT0"] = (bool)value);
-            so.BindingMgr.AddSetter("BUTTON1", value => buttonStates["buttonT1"] = (bool)value);
-            so.BindingMgr.AddSetter("BUTTON2", value => buttonStates["buttonT2"] = (bool)value);
-            so.BindingMgr.AddSetter("BUTTON3", value => buttonStates["buttonT3"] = (bool)value);
-            so.BindingMgr.AddSetter("BUTTON4", value => buttonStates["buttonT4"] = (bool)value);
-            so.BindingMgr.AddSetter("BUTTON5", value => buttonStates["buttonT5"] = (bool)value);
-            so.BindingMgr.AddSetter("BUTTON6", value => buttonStates["buttonT6"] = (bool)value);
-            so.BindingMgr.AddSetter("BUTTON7", value => buttonStates["buttonB0"] = (bool)value);
-            so.BindingMgr.AddSetter("BUTTON8", value => buttonStates["buttonB1"] = (bool)value);
-            so.BindingMgr.AddSetter("BUTTON9", value => buttonStates["buttonB2"] = (bool)value);
-            so.BindingMgr.AddSetter("BUTTON10", value => buttonStates["buttonB3"] = (bool)value);
-            so.BindingMgr.AddSetter("BUTTON11", value => buttonStates["buttonB4"] = (bool)value);
-            so.BindingMgr.AddSetter("BUTTON12", value => buttonStates["buttonB5"] = (bool)value);
-            so.BindingMgr.AddSetter("BUTTON13", value => buttonStates["buttonB6"] = (bool)value);
-
-            // Labels
-            so.BindingMgr.AddSetter("LIGHT0LABEL", value => lightLabels["lightT0"] = (string)value);
-            so.BindingMgr.AddSetter("LIGHT1LABEL", value => lightLabels["lightT1"] = (string)value);
-            so.BindingMgr.AddSetter("LIGHT2LABEL", value => lightLabels["lightT2"] = (string)value);
-            so.BindingMgr.AddSetter("LIGHT3LABEL", value => lightLabels["lightT3"] = (string)value);
-            so.BindingMgr.AddSetter("LIGHT4LABEL", value => lightLabels["lightT4"] = (string)value);
-            so.BindingMgr.AddSetter("LIGHT5LABEL", value => lightLabels["lightT5"] = (string)value);
-            so.BindingMgr.AddSetter("LIGHT6LABEL", value => lightLabels["lightT6"] = (string)value);
-            so.BindingMgr.AddSetter("LIGHT7LABEL", value => lightLabels["lightB0"] = (string)value);
-            so.BindingMgr.AddSetter("LIGHT8LABEL", value => lightLabels["lightB1"] = (string)value);
-            so.BindingMgr.AddSetter("LIGHT9LABEL", value => lightLabels["lightB2"] = (string)value);
-            so.BindingMgr.AddSetter("LIGHT10LABEL", value => lightLabels["lightB3"] = (string)value);
-            so.BindingMgr.AddSetter("LIGHT11LABEL", value => lightLabels["lightB4"] = (string)value);
-            so.BindingMgr.AddSetter("LIGHT12LABEL", value => lightLabels["lightB5"] = (string)value);
-            so.BindingMgr.AddSetter("LIGHT13LABEL", value => lightLabels["lightB6"] = (string)value);
-
-            so.BindingMgr.AddSetter("BUTTON0LABEL", value => buttonLabels["buttonT0"] = (string)value);
-            so.BindingMgr.AddSetter("BUTTON1LABEL", value => buttonLabels["buttonT1"] = (string)value);
-            so.BindingMgr.AddSetter("BUTTON2LABEL", value => buttonLabels["buttonT2"] = (string)value);
-            so.BindingMgr.AddSetter("BUTTON3LABEL", value => buttonLabels["buttonT3"] = (string)value);
-            so.BindingMgr.AddSetter("BUTTON4LABEL", value => buttonLabels["buttonT4"] = (string)value);
-            so.BindingMgr.AddSetter("BUTTON5LABEL", value => buttonLabels["buttonT5"] = (string)value);
-            so.BindingMgr.AddSetter("BUTTON6LABEL", value => buttonLabels["buttonT6"] = (string)value);
-            so.BindingMgr.AddSetter("BUTTON7LABEL", value => buttonLabels["buttonB0"] = (string)value);
-            so.BindingMgr.AddSetter("BUTTON8LABEL", value => buttonLabels["buttonB1"] = (string)value);
-            so.BindingMgr.AddSetter("BUTTON9LABEL", value => buttonLabels["buttonB2"] = (string)value);
-            so.BindingMgr.AddSetter("BUTTON10LABEL", value => buttonLabels["buttonB3"] = (string)value);
-            so.BindingMgr.AddSetter("BUTTON11LABEL", value => buttonLabels["buttonB4"] = (string)value);
-            so.BindingMgr.AddSetter("BUTTON12LABEL", value => buttonLabels["buttonB5"] = (string)value);
-            so.BindingMgr.AddSetter("BUTTON13LABEL", value => buttonLabels["buttonB6"] = (string)value);
+                so.BindingMgr.AddGetter("FLAG" + i + "LABEL", () => vt.flagLabels["flag" + i]);
+                so.BindingMgr.AddSetter("FLAG" + i + "LABEL", value => vt.flagLabels["flag" + i] = (string)value);
+            }
+            //Buttons
+            for (int i = 0; i < vt.buttonStates.Count; i++)
+            {
+                so.BindingMgr.AddGetter("BUTTON" + i, () => vt.buttonStates["button" + i]);
+                so.BindingMgr.AddSetter("BUTTON" + i, value => vt.buttonStates["button" + i] = (bool)value);
+                
+                so.BindingMgr.AddGetter("BUTTON" + i + "LABEL", () => vt.buttonLabels["button" + i]);
+                so.BindingMgr.AddSetter("BUTTON" + i + "LABEL", value => vt.buttonLabels["button" + i] = (string)value);
+            }
         }
 
         void SetLights()
         {
-            foreach (KeyValuePair<string, bool> kvpair in lightStates)
+            foreach (KeyValuePair<string, bool> kvpair in vt.flagStates)
             {
                 string color = "";
-                if (kvpair.Value == true)
+                if (kvpair.Value)
                 {
                     color = textTintButtonOn;
                 }
@@ -715,19 +551,26 @@ namespace kOSPropMonitor
                 {
                     color = textTintButtonOff;
                 }
-                string sub = kvpair.Key.Substring(5);
-                response = response.Replace("{lightSide" + sub + "}", (color + lightSide + "[#FFFFFF]").ToString());
-                response = response.Replace("{lightSideSmall" + sub + "}", (color + lightSideSmall + "[#FFFFFF]").ToString());
-                response = response.Replace("{lightLabel" + sub + "}", (lightLabels[kvpair.Key]).ToString());
+                string sub = kvpair.Key.Substring(4);
+                try
+                {
+                    response = response.Replace("{flagSide" + sub + "}", (color + flagSide + "[#FFFFFF]"));
+                    response = response.Replace("{flagSideSmall" + sub + "}", (color + flagSideSmall + "[#FFFFFF]"));
+                    response = response.Replace("{flagLabel" + sub + "}", (vt.flagLabels[kvpair.Key]));
+                }
+                catch
+                {
+                    Debug.Log("kOSPropMonitor: Error in templating for flags!");
+                }
             }
         }
 
         void SetButtons()
         {
-            foreach (KeyValuePair<int, string> kvpair in buttonID)
+            foreach (KeyValuePair<string, bool> kvpair in vt.buttonStates)
             {
                 string color = "";
-                if (buttonStates["button" + kvpair.Value] == true)
+                if (kvpair.Value)
                 {
                     color = textTintButtonOn;
                 }
@@ -735,9 +578,17 @@ namespace kOSPropMonitor
                 {
                     color = textTintButtonOff;
                 }
-                response = response.Replace("{buttonSide" + kvpair.Value + "}", (color + buttonSide + "[#FFFFFF]").ToString());
-                response = response.Replace("{buttonSideSmall" + kvpair.Value + "}", (color + buttonSideSmall + "[#FFFFFF]").ToString());
-                response = response.Replace("{buttonLabel" + kvpair.Value + "}", (buttonLabels["button" + kvpair.Value]).ToString());
+                string sub = kvpair.Key.Substring(6);
+                try
+                {
+                    response = response.Replace("{buttonSide" + sub + "}", (color + buttonSide + "[#FFFFFF]").ToString());
+                    response = response.Replace("{buttonSideSmall" + sub + "}", (color + buttonSideSmall + "[#FFFFFF]").ToString());
+                    response = response.Replace("{buttonLabel" + sub + "}", (vt.buttonLabels["button" + sub]).ToString());
+                }
+                catch
+                {
+                    Debug.Log("kOSPropMonitor: Error in templating for buttons!");
+                }
             }
         }
 
@@ -758,11 +609,6 @@ namespace kOSPropMonitor
 
             InputLockManager.SetControlLock(CONTROL_LOCKOUT);
 
-            // Prevent editor keys from being pressed while typing
-            EditorLogic editor = EditorLogic.fetch;
-            //TODO: POST 0.90 REVIEW
-            if (editor != null && InputLockManager.IsUnlocked(ControlTypes.All)) editor.Lock(true, true, true, CONTROL_LOCKOUT);
-
             // This seems to be the only way to force KSP to let me lock out the "X" throttle
             // key.  It seems to entirely bypass the logic of every other keypress in the game,
             // so the only way to fix it is to use the keybindings system from the Setup screen.
@@ -782,11 +628,7 @@ namespace kOSPropMonitor
             isLocked = false;
 
             InputLockManager.RemoveControlLock(CONTROL_LOCKOUT);
-
-
-            EditorLogic editor = EditorLogic.fetch;
-            if (editor != null) editor.Unlock(CONTROL_LOCKOUT);
-
+            
             // This seems to be the only way to force KSP to let me lock out the "X" throttle
             // key.  It seems to entirely bypass the logic of every other keypress in the game:
             GameSettings.THROTTLE_CUTOFF = rememberThrottleCutoffKey;

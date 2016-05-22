@@ -521,20 +521,24 @@ namespace kOSPropMonitor
             //Flags
             for (int i = 0; i < vt.flagStates.Count; i ++)
             {
-                so.BindingMgr.AddGetter("FLAG" + i, () => vt.flagStates["flag" + i]);
-                so.BindingMgr.AddSetter("FLAG" + i, value => vt.flagStates["flag" + i] = (bool)value);
+                string flagname = "FLAG" + i;
+                Debug.Log("kOSPropMonitor: Registering Flag " + flagname);
+                so.BindingMgr.AddGetter(flagname, () => vt.flagStates[flagname.ToLower()]);
+                so.BindingMgr.AddSetter(flagname, value => vt.flagStates[flagname.ToLower()] = (bool)value);
 
-                so.BindingMgr.AddGetter("FLAG" + i + "LABEL", () => vt.flagLabels["flag" + i]);
-                so.BindingMgr.AddSetter("FLAG" + i + "LABEL", value => vt.flagLabels["flag" + i] = (string)value);
+                so.BindingMgr.AddGetter(flagname + "LABEL", () => vt.flagLabels[flagname.ToLower()]);
+                so.BindingMgr.AddSetter(flagname + "LABEL", value => vt.flagLabels[flagname.ToLower()] = (string)value);
             }
             //Buttons
             for (int i = 0; i < vt.buttonStates.Count; i++)
             {
-                so.BindingMgr.AddGetter("BUTTON" + i, () => vt.buttonStates["button" + i]);
-                so.BindingMgr.AddSetter("BUTTON" + i, value => vt.buttonStates["button" + i] = (bool)value);
+                string buttonname = "BUTTON" + i;
+                Debug.Log("kOSPropMonitor: Registering Button " + buttonname);
+                so.BindingMgr.AddGetter(buttonname, () => vt.buttonStates[buttonname.ToLower()]);
+                so.BindingMgr.AddSetter(buttonname, value => vt.buttonStates[buttonname.ToLower()] = (bool)value);
                 
-                so.BindingMgr.AddGetter("BUTTON" + i + "LABEL", () => vt.buttonLabels["button" + i]);
-                so.BindingMgr.AddSetter("BUTTON" + i + "LABEL", value => vt.buttonLabels["button" + i] = (string)value);
+                so.BindingMgr.AddGetter(buttonname + "LABEL", () => vt.buttonLabels[buttonname.ToLower()]);
+                so.BindingMgr.AddSetter(buttonname + "LABEL", value => vt.buttonLabels[buttonname.ToLower()] = (string)value);
             }
         }
 

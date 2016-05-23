@@ -63,11 +63,17 @@ namespace kOSPropMonitor
         [KSPField]
         public string textTintButtonOn = "[#009900ff]";
         [KSPField]
-        public string textTintButtonOff = "[#ffffff3e]";
+        public string textTintButtonOff = "[#ffffffff]";
         [KSPField]
-        public string textTintLightOn = "[#009900ff]";
+        public string textTintFlagOn = "[#009900ff]";
         [KSPField]
-        public string textTintLightOff = "[#ffffff3e]";
+        public string textTintFlagOff = "[#000000]";
+        [KSPField]
+        public string keyboardActiveLabel = "KBRD";
+        [KSPField]
+        public string keyboardActiveTint = "[#FFF72B]";
+        [KSPField]
+        public string keyboardInactiveTint = "[#000000]";
         [KSPField]
         public int consoleWidth = 40;
         [KSPField]
@@ -459,7 +465,7 @@ namespace kOSPropMonitor
                 currentTextTint = textTintUnpowered;
             }
 
-            response_formats["currentCPU"] = currentTextTint + "CPU " + current_processor_id + "[#FFFFFF]";
+            response_formats["currentCPU"] = currentTextTint + current_processor_id + "[#FFFFFF]";
 
             for (int processor_entry_count = 0; processor_entry_count < processors.Count / 4 + 1; processor_entry_count++)
             {
@@ -531,16 +537,16 @@ namespace kOSPropMonitor
 
         void SetFlags()
         {
+            string color = "";
             foreach (KeyValuePair<string, bool> kvpair in vt.flagStates)
             {
-                string color = "";
                 if (kvpair.Value)
                 {
-                    color = textTintButtonOn;
+                    color = textTintFlagOn;
                 }
                 else
                 {
-                    color = textTintButtonOff;
+                    color = textTintFlagOff;
                 }
                 string sub = kvpair.Key.Substring(4);
                 try
@@ -553,6 +559,33 @@ namespace kOSPropMonitor
                 {
                     Debug.Log("kOSMonitor: Error in templating for flags!");
                 }
+            }
+
+            if (isLocked)
+            {
+                color = keyboardActiveTint;
+            }
+            else
+            {
+                color = keyboardInactiveTint;
+            }
+
+            try
+            {
+                response = response.Replace("{keyboardFlag}", (color + keyboardActiveLabel));
+            }
+            catch
+            {
+                Debug.Log("kOSMonitor: Error setting keyboard flag!");
+            }
+
+            try
+            {
+                response = response.Replace("{GUID}", guid.ToString());
+            }
+            catch
+            {
+                Debug.Log("kOSMonitor: Error setting GUID flag!");
             }
         }
 

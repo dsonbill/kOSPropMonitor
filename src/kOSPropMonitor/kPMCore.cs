@@ -86,8 +86,13 @@ namespace kOSPropMonitor
         {
             if (vessel_register.ContainsKey(destroyedVessel.id))
             {
+                foreach(Guid monitorID in vessel_register[destroyedVessel.id].monitors)
+                {
+                    monitor_register.Remove(monitorID);
+                }
                 vessel_register.Remove(destroyedVessel.id);
             }
+            Unlock();
         }
 
         public void RegisterVessel(Guid vesselID)
@@ -255,6 +260,7 @@ namespace kOSPropMonitor
         public Dictionary<int, string> buttonID;
         public Dictionary<string, bool> flagStates;
         public Dictionary<string, string> flagLabels;
+        public List<Guid> monitors;
 
         public kPMVesselTrack()
         {
@@ -263,6 +269,12 @@ namespace kOSPropMonitor
             buttonID = new Dictionary<int, string>();
             flagStates = new Dictionary<string, bool>();
             flagLabels = new Dictionary<string, string>();
+            monitors = new List<Guid>();
+        }
+
+        public void RegisterMonitor(Guid monitorID)
+        {
+            monitors.Add(monitorID);
         }
     }
 }

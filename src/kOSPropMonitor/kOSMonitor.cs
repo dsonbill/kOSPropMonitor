@@ -241,6 +241,7 @@ namespace kOSPropMonitor
                 //Register Vessel and Get Track
                 kPMCore.fetch.RegisterVessel(this.vessel.id);
                 vt = kPMCore.fetch.GetVesselTrack(this.vessel.id);
+                vt.RegisterMonitor(guid);
 
                 //Register monitor and Keyboard Delegate
                 kPMCore.fetch.RegisterMonitor(this, guid);

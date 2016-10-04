@@ -71,6 +71,7 @@ namespace kOSPropMonitor
             {
                 vessel_register = new Dictionary<Guid, kPMVesselTrack>();
                 monitor_register = new Dictionary<Guid, kOSMonitor>();
+                wasInFlight = false;
             }
 
             if (lock_control != master_lock)

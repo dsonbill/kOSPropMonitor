@@ -49,6 +49,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="kPMAPI.cs" />
     <Compile Include="kPMCore.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="kOSMonitor.cs" />

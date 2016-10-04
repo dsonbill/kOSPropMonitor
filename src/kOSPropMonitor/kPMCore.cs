@@ -12,11 +12,12 @@ namespace kOSPropMonitor
         private static kPMCore singleton;
 
         //Tracking
-        private Dictionary<Guid, kPMVesselTrack> vessel_register;
+        public Dictionary<Guid, kPMVesselTrack> vessel_register;
         public Dictionary<Guid, kOSMonitor> monitor_register;
         private string CONTROL_LOCKOUT = "kPMCore";
         private Guid lock_control;
         private Guid master_lock;
+        private bool wasInFlight;
 
         //Keyboard Memory Variables
         private KeyBinding rememberThrottleCutoffKey;
@@ -64,6 +65,14 @@ namespace kOSPropMonitor
 
         void Update()
         {
+            if (HighLogic.LoadedScene == GameScenes.FLIGHT && !wasInFlight) wasInFlight = true;
+
+            if (HighLogic.LoadedScene != GameScenes.FLIGHT && wasInFlight)
+            {
+                vessel_register = new Dictionary<Guid, kPMVesselTrack>();
+                monitor_register = new Dictionary<Guid, kOSMonitor>();
+            }
+
             if (lock_control != master_lock)
             {
                 //No Lock If Not In Flight
@@ -255,26 +264,67 @@ namespace kOSPropMonitor
 
     class kPMVesselTrack
     {
-        public Dictionary<string, bool> buttonStates;
-        public Dictionary<string, string> buttonLabels;
+        public List<kPMAPI> kpmAPI;
+        public Dictionary<int, bool> buttonStates;
+        public Dictionary<int, string> buttonLabels;
         public Dictionary<int, string> buttonID;
-        public Dictionary<string, bool> flagStates;
-        public Dictionary<string, string> flagLabels;
+        public Dictionary<int, bool> flagStates;
+        public Dictionary<int, string> flagLabels;
         public List<Guid> monitors;
+
+        public delegate void OnButtonStateChange(int button, bool value);
+        public event OnButtonStateChange onButtonStateChange;
+        public delegate void OnButtonLabelChange(int button, string value);
+        public event OnButtonLabelChange onButtonLabelChange;
+
+        public delegate void OnFlagStateChange(int flag, bool value);
+        public event OnFlagStateChange onFlagStateChange;
+        public delegate void OnFlagLabelChange(int flag, string value);
+        public event OnFlagLabelChange onFlagLabelChange;
 
         public kPMVesselTrack()
         {
-            buttonStates = new Dictionary<string, bool>();
-            buttonLabels = new Dictionary<string, string>();
+            kpmAPI = new List<kPMAPI>();
+            buttonStates = new Dictionary<int, bool>();
+            buttonLabels = new Dictionary<int, string>();
             buttonID = new Dictionary<int, string>();
-            flagStates = new Dictionary<string, bool>();
-            flagLabels = new Dictionary<string, string>();
+            flagStates = new Dictionary<int, bool>();
+            flagLabels = new Dictionary<int, string>();
             monitors = new List<Guid>();
         }
 
         public void RegisterMonitor(Guid monitorID)
         {
             monitors.Add(monitorID);
+        }
+
+        public void RegisterAPI(kPMAPI api)
+        {
+            api.GetButtons().onButtonStateChange += ChangeButtonState;
+            api.GetButtons().onButtonLabelChange += ChangeButtonLabel;
+            api.GetFlags().onFlagStateChange += ChangeFlagState;
+            api.GetFlags().onFlagLabelChange += ChangeFlagLabel;
+            kpmAPI.Add(api);
+        }
+
+        public void ChangeButtonState(int button, bool value)
+        {
+            if (onButtonStateChange != null) onButtonStateChange(button, value);
+        }
+
+        public void ChangeButtonLabel(int button, string value)
+        {
+            if (onButtonLabelChange != null) onButtonLabelChange(button, value);
+        }
+
+        public void ChangeFlagState(int flag, bool value)
+        {
+            if (onFlagStateChange != null) onFlagStateChange(flag, value);
+        }
+
+        public void ChangeFlagLabel(int flag, string value)
+        {
+            if (onFlagLabelChange != null) onFlagLabelChange(flag, value);
         }
     }
 }

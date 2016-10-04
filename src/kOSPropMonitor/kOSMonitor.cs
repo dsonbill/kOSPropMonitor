@@ -100,6 +100,7 @@ namespace kOSPropMonitor
         private bool consumeEvent;
         private bool isLocked = false;
         private string response = "kOS Terminal Standing By";
+        private string unformattedTemplate;
 
         //private string consoleBuffer;
         private float cursorBlinkTime;
@@ -145,7 +146,7 @@ namespace kOSPropMonitor
                             if (kvpair.Value > 0.25f)
                             {
                                 //Add bound variables
-                                AddGettersAndSetters(processor_shares[kvpair.Key]);
+                                //AddGettersAndSetters(processor_shares[kvpair.Key]);
                                 wasOff.Remove(kvpair.Key);
                                 Debug.Log("kOSMonitor Re-Initialized Processor");
                             }
@@ -169,7 +170,7 @@ namespace kOSPropMonitor
                     }
 
                     //Format Response
-                    response = Utilities.Format(template, response_formats);
+                    response = Utilities.Format(unformattedTemplate, response_formats);
                     SetButtons();
                     SetFlags();
 
@@ -196,6 +197,12 @@ namespace kOSPropMonitor
             //Set Processor Installed Flag
             processorIsInstalled = false;
 
+            //Return if not ready
+            if (!kPMCore.fetch.vessel_register.ContainsKey(this.vessel.id)) return;
+
+            //Get Vessel Track
+            vt = kPMCore.fetch.GetVesselTrack(this.vessel.id);
+
             //Response Dictionary
             response_formats = new Dictionary<string, string>();
 
@@ -204,16 +211,17 @@ namespace kOSPropMonitor
 
             //Register kOSProcessors
             processors = GetProcessorList();
+            //if (processors.Count > 0) processorIsInstalled = true;
 
             //Get SharedObjects
             processor_shares = new List<SharedObjects>();
-            foreach (kOSProcessor kos_processor in processors)
+            foreach (kOSProcessor processor in processors)
             {
                 //Set Processor Installed Flag
                 processorIsInstalled = true;
-
+            
                 //Register the kOSProcessor's SharedObjects
-                processor_shares.Add(GetProcessorShare(kos_processor));
+                processor_shares.Add(GetProcessorShare(processor));
             }
 
             //Set Vessel Part Cound
@@ -239,33 +247,62 @@ namespace kOSPropMonitor
                 ReadTemplate();
 
                 //Register Vessel and Get Track
-                kPMCore.fetch.RegisterVessel(this.vessel.id);
-                vt = kPMCore.fetch.GetVesselTrack(this.vessel.id);
+                //kPMCore.fetch.RegisterVessel(this.vessel.id);
                 vt.RegisterMonitor(guid);
 
                 //Register monitor and Keyboard Delegate
                 kPMCore.fetch.RegisterMonitor(this, guid);
 
+                vt.onButtonLabelChange += OnButtonLabelChange;
+                vt.onButtonStateChange += OnButtonStateChange;
+                vt.onFlagLabelChange += OnFlagLabelChange;
+                vt.onFlagStateChange += OnFlagStateChange;
+
                 //Register Buttons and Flags
                 for (int i = vt.buttonLabels.Count; i < multiFunctionButtonsPOS.Count; i++)
                 {
-                    vt.buttonLabels["button" + i] = buttonEmptyLabel;
-                    vt.buttonStates["button" + i] = false;
+                    //vt.buttonLabels["button" + i] = buttonEmptyLabel;
+                    //vt.buttonStates["button" + i] = false;
+                    vt.buttonLabels[i] = buttonEmptyLabel;
+                    vt.buttonStates[i] = false;
                 }
 
                 for (int i = vt.flagLabels.Count; i < flagCount; i++)
                 {
-                    vt.flagLabels["flag" + i] = flagEmptyLabel;
-                    vt.flagStates["flag" + i] = false;
+                    vt.flagLabels[i] = flagEmptyLabel;
+                    vt.flagStates[i] = false;
                 }
 
                 //Add Getters and Setters
-                foreach (SharedObjects so in processor_shares)
-                {
-                    AddGettersAndSetters(so);
-                }
+                //foreach (SharedObjects so in processor_shares)
+                //{
+                //    //AddGettersAndSetters(so);
+                //}
 
                 initialized = true;
+            }
+
+            foreach (kPMAPI kpmapi in vt.kpmAPI)
+            {
+                foreach (KeyValuePair<int, string> kvpair in vt.buttonLabels)
+                {
+                    kpmapi.GetButtons().buttonLabels[kvpair.Key] = (kvpair.Value);
+                }
+
+                foreach (KeyValuePair<int, bool> kvpair in vt.buttonStates)
+                {
+                    kpmapi.GetButtons().buttonStates[kvpair.Key] = (kvpair.Value);
+                }
+
+                foreach (KeyValuePair<int, string> kvpair in vt.flagLabels)
+                {
+                    kpmapi.GetFlags().flagLabels[kvpair.Key] = (kvpair.Value);
+                }
+
+                foreach (KeyValuePair<int, bool> kvpair in vt.flagStates)
+                {
+                    kpmapi.GetFlags().flagStates[kvpair.Key] = (kvpair.Value);
+                }
             }
 
             Debug.Log("kOSMonitor Initialized!");
@@ -366,7 +403,12 @@ namespace kOSPropMonitor
             if (multiFunctionButtonsPOS.Contains(ID))
             {
                 int bID = multiFunctionButtonsPOS.IndexOf(ID);
-                vt.buttonStates["button" + bID] = !vt.buttonStates["button" + bID];
+                vt.buttonStates[bID] = !vt.buttonStates[bID];
+
+                foreach(kPMAPI api in vt.kpmAPI)
+                {
+                    api.GetButtons().buttonStates[bID] = vt.buttonStates[bID];
+                }
             }
         }
 
@@ -397,11 +439,11 @@ namespace kOSPropMonitor
             }
             using (StreamReader sr = File.OpenText(FILE_NAME))
             {
-                template = "";
+                unformattedTemplate = "";
                 String input;
                 while ((input = sr.ReadLine()) != null)
                 {
-                    template += input + Environment.NewLine;
+                    unformattedTemplate += input + Environment.NewLine;
                 }
                 sr.Close();
             }
@@ -508,38 +550,58 @@ namespace kOSPropMonitor
             }
         }
 
-        void AddGettersAndSetters(SharedObjects so)
+        void OnButtonLabelChange(int index, string label)
         {
-            //Looping doesn't seem to work - I'm sure there's another way to do this, but this is simple enough
-
-            //Flags
-            for (int i = 0; i < vt.flagStates.Count; i ++)
-            {
-                string flagname = "FLAG" + i;
-                Debug.Log("kOSMonitor: Registering Flag " + flagname);
-                so.BindingMgr.AddGetter(flagname, () => vt.flagStates[flagname.ToLower()]);
-                so.BindingMgr.AddSetter(flagname, value => vt.flagStates[flagname.ToLower()] = (bool)value);
-
-                so.BindingMgr.AddGetter(flagname + "LABEL", () => vt.flagLabels[flagname.ToLower()]);
-                so.BindingMgr.AddSetter(flagname + "LABEL", value => vt.flagLabels[flagname.ToLower()] = (string)value);
-            }
-            //Buttons
-            for (int i = 0; i < vt.buttonStates.Count; i++)
-            {
-                string buttonname = "BUTTON" + i;
-                Debug.Log("kOSMonitor: Registering Button " + buttonname);
-                so.BindingMgr.AddGetter(buttonname, () => vt.buttonStates[buttonname.ToLower()]);
-                so.BindingMgr.AddSetter(buttonname, value => vt.buttonStates[buttonname.ToLower()] = (bool)value);
-                
-                so.BindingMgr.AddGetter(buttonname + "LABEL", () => vt.buttonLabels[buttonname.ToLower()]);
-                so.BindingMgr.AddSetter(buttonname + "LABEL", value => vt.buttonLabels[buttonname.ToLower()] = (string)value);
-            }
+            vt.buttonLabels[index] = label;
         }
+
+        void OnButtonStateChange(int index, bool state)
+        {
+            vt.buttonStates[index] = state;
+        }
+
+        void OnFlagLabelChange(int index, string label)
+        {
+            vt.flagLabels[index] = label;
+        }
+
+        void OnFlagStateChange(int index, bool state)
+        {
+            vt.flagStates[index] = state;
+        }
+
+        //void AddGettersAndSetters(SharedObjects so)
+        //{
+        //    //Looping doesn't seem to work - I'm sure there's another way to do this, but this is simple enough
+        //
+        //    //Flags
+        //    for (int i = 0; i < vt.flagStates.Count; i ++)
+        //    {
+        //        string flagname = "FLAG" + i;
+        //        Debug.Log("kOSMonitor: Registering Flag " + flagname);
+        //        so.BindingMgr.AddGetter(flagname, () => vt.flagStates[flagname.ToLower()]);
+        //        so.BindingMgr.AddSetter(flagname, value => vt.flagStates[flagname.ToLower()] = (bool)value);
+        //
+        //        so.BindingMgr.AddGetter(flagname + "LABEL", () => vt.flagLabels[flagname.ToLower()]);
+        //        so.BindingMgr.AddSetter(flagname + "LABEL", value => vt.flagLabels[flagname.ToLower()] = (string)value);
+        //    }
+        //    //Buttons
+        //    for (int i = 0; i < vt.buttonStates.Count; i++)
+        //    {
+        //        string buttonname = "BUTTON" + i;
+        //        Debug.Log("kOSMonitor: Registering Button " + buttonname);
+        //        so.BindingMgr.AddGetter(buttonname, () => vt.buttonStates[buttonname.ToLower()]);
+        //        so.BindingMgr.AddSetter(buttonname, value => vt.buttonStates[buttonname.ToLower()] = (bool)value);
+        //        
+        //        so.BindingMgr.AddGetter(buttonname + "LABEL", () => vt.buttonLabels[buttonname.ToLower()]);
+        //        so.BindingMgr.AddSetter(buttonname + "LABEL", value => vt.buttonLabels[buttonname.ToLower()] = (string)value);
+        //    }
+        //}
 
         void SetFlags()
         {
             string color = "";
-            foreach (KeyValuePair<string, bool> kvpair in vt.flagStates)
+            foreach (KeyValuePair<int, bool> kvpair in vt.flagStates)
             {
                 if (kvpair.Value)
                 {
@@ -549,7 +611,7 @@ namespace kOSPropMonitor
                 {
                     color = textTintFlagOff;
                 }
-                string sub = kvpair.Key.Substring(4);
+                string sub = kvpair.Key.ToString();
                 try
                 {
                     response = response.Replace("{flagSide" + sub + "}", (color + flagSide + "[#FFFFFF]"));
@@ -592,7 +654,7 @@ namespace kOSPropMonitor
 
         void SetButtons()
         {
-            foreach (KeyValuePair<string, bool> kvpair in vt.buttonStates)
+            foreach (KeyValuePair<int, bool> kvpair in vt.buttonStates)
             {
                 string color = "";
                 if (kvpair.Value)
@@ -603,12 +665,12 @@ namespace kOSPropMonitor
                 {
                     color = textTintButtonOff;
                 }
-                string sub = kvpair.Key.Substring(6);
+                string sub = kvpair.Key.ToString();
                 try
                 {
-                    response = response.Replace("{buttonSide" + sub + "}", (color + buttonSide + "[#FFFFFF]").ToString());
-                    response = response.Replace("{buttonSideSmall" + sub + "}", (color + buttonSideSmall + "[#FFFFFF]").ToString());
-                    response = response.Replace("{buttonLabel" + sub + "}", (color + vt.buttonLabels["button" + sub] + "[#FFFFFF]").ToString());
+                    response = response.Replace("{buttonSide" + sub + "}", color + buttonSide + "[#FFFFFF]");
+                    response = response.Replace("{buttonSideSmall" + sub + "}", color + buttonSideSmall + "[#FFFFFF]");
+                    response = response.Replace("{buttonLabel" + sub + "}", color + vt.buttonLabels[kvpair.Key] + "[#FFFFFF]");
                 }
                 catch
                 {

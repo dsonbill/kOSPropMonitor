@@ -197,6 +197,12 @@ namespace kOSPropMonitor
             //Set Processor Installed Flag
             processorIsInstalled = false;
 
+            //Set Current Processor to 0
+            current_processor_id = 0;
+
+            //Unlock if locked
+            if (isLocked) ToggleLock();
+
             //Return if not ready
             if (!kPMCore.fetch.vessel_register.ContainsKey(this.vessel.id)) return;
 

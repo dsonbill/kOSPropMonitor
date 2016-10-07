@@ -20,14 +20,45 @@ namespace kOSPropMonitor
     {
         private kPMButtonAPI buttons;
         private kPMFlagAPI flags;
+        Guid currentID;
 
         public kPMAPI(SharedObjects shared) : base(shared)
         {
+            UnityEngine.Debug.Log("kPM: New API Object Created");
+            currentID = shared.Vessel.id;
             kPMCore.fetch.RegisterVessel(shared.Vessel.id);
             kPMCore.fetch.GetVesselTrack(shared.Vessel.id).RegisterAPI(this);
 
             AddSuffix("BUTTONS", new Suffix<kPMButtonAPI>(GetButtons));
             AddSuffix("FLAGS", new Suffix<kPMFlagAPI>(GetFlags));
+        }
+
+        //public bool Reconfigure()
+        //{
+        //    UnityEngine.Debug.Log("kPM: Attempting To Reconfigure kPMAPI");
+        //    if (shared.Vessel.id != currentID)
+        //    {
+        //        UnityEngine.Debug.Log("kPM: Reconfiguring kPMAPI");
+        //        kPMCore.fetch.GetVesselTrack(currentID).DeregisterAPI(this);
+        //        kPMCore.fetch.RegisterVessel(shared.Vessel.id);
+        //        kPMCore.fetch.GetVesselTrack(shared.Vessel.id).RegisterAPI(this);
+        //        currentID = shared.Vessel.id;
+        //        return true;
+        //    }
+        //    return false;
+        //}
+
+        public void Update()
+        {
+            UnityEngine.Debug.Log(shared.Vessel.id);
+            if (shared.Vessel.id != currentID)
+            {
+                UnityEngine.Debug.Log("kPM: Reconfiguring kPMAPI");
+                kPMCore.fetch.GetVesselTrack(currentID).DeregisterAPI(this);
+                kPMCore.fetch.RegisterVessel(shared.Vessel.id);
+                kPMCore.fetch.GetVesselTrack(shared.Vessel.id).RegisterAPI(this);
+                currentID = shared.Vessel.id;
+            }
         }
 
         public override BooleanValue Available()

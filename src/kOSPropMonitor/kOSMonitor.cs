@@ -87,6 +87,9 @@ namespace kOSPropMonitor
         private char[] delimiterChars = { ' ', ',', '.', ':'};
         private Dictionary<string, string> response_formats;
         private Guid guid;
+        //private bool reconfigure;
+        private bool reconfiguring;
+        private Guid shipGuid;
 
         //kOS Processor Variables
         private bool isPowered = false;
@@ -94,7 +97,6 @@ namespace kOSPropMonitor
         private int current_processor_id = 0;
         private List<SharedObjects> processor_shares;
         private List<kOSProcessor> processors;
-        private Dictionary<int, float> wasOff;
 
         //kOS Terminal Variables
         private bool consumeEvent;
@@ -111,15 +113,27 @@ namespace kOSPropMonitor
 
         public override void OnUpdate()
         {
+            Debug.Log("kPM: Vessel ID by Monitor is: " + this.vessel.id);
             if (processorIsInstalled)
             {
                 if (initialized)
                 {
                     //Check for destruction
-                    if (this.vessel.parts.Count != lastPartCount)
+                    if (this.vessel.parts.Count != lastPartCount || reconfiguring)
                     {
+                        Debug.Log("kPM: Ship Reconfiguring");
+                        reconfiguring = true;
                         Initialize(screenWidth, screenHeight);
+                        return;
                     }
+
+                    //if (this.vessel.id != shipGuid)
+                    //{
+                    //    Debug.Log("kPM: Ship ID Changed! Reconfiguring API");
+                    //    reconfigure = true;
+                    //    Initialize(screenWidth, screenHeight);
+                    //    return;
+                    //}
 
                     //Set power state from SharedObjects
                     isPowered = processor_shares[current_processor_id].Window.IsPowered;
@@ -135,26 +149,6 @@ namespace kOSPropMonitor
                         if (isLocked)
                         {
                             ToggleLock();
-                        }
-                    }
-
-                    //Check if a processor was recently booted
-                    if (wasOff.Count > 0)
-                    {
-                        foreach (KeyValuePair<int, float> kvpair in wasOff)
-                        {
-                            if (kvpair.Value > 0.25f)
-                            {
-                                //Add bound variables
-                                //AddGettersAndSetters(processor_shares[kvpair.Key]);
-                                wasOff.Remove(kvpair.Key);
-                                Debug.Log("kOSMonitor Re-Initialized Processor");
-                            }
-                            else
-                            {
-                                wasOff[kvpair.Key] += Time.deltaTime;
-                                //Debug.Log("kOSMonitor Initializing Processor...");
-                            }
                         }
                     }
 
@@ -194,6 +188,7 @@ namespace kOSPropMonitor
 
         public void Initialize(int screenWidth, int screenHeight)
         {
+
             //Set Processor Installed Flag
             processorIsInstalled = false;
 
@@ -203,21 +198,8 @@ namespace kOSPropMonitor
             //Unlock if locked
             if (isLocked) ToggleLock();
 
-            //Return if not ready
-            if (!kPMCore.fetch.vessel_register.ContainsKey(this.vessel.id)) return;
-
-            //Get Vessel Track
-            vt = kPMCore.fetch.GetVesselTrack(this.vessel.id);
-
-            //Response Dictionary
-            response_formats = new Dictionary<string, string>();
-
-            //Boot-up tracking
-            wasOff = new Dictionary<int, float>();
-
             //Register kOSProcessors
             processors = GetProcessorList();
-            //if (processors.Count > 0) processorIsInstalled = true;
 
             //Get SharedObjects
             processor_shares = new List<SharedObjects>();
@@ -225,10 +207,37 @@ namespace kOSPropMonitor
             {
                 //Set Processor Installed Flag
                 processorIsInstalled = true;
-            
+
                 //Register the kOSProcessor's SharedObjects
                 processor_shares.Add(GetProcessorShare(processor));
             }
+
+            //Return Early If No Processor
+            if (!processorIsInstalled) return;
+
+            //Reconfigure if needed
+            //if (reconfigure)
+            //{
+            //    //reconfiguring = true;
+            //    if (vt.ReconfigureAPI() == 0) return;
+            //    //reconfigure = false;
+            //    //reconfiguring = false;
+            //    //shipGuid = this.vessel.id;
+            //    Debug.Log("kPM: Completed Reconfiguring API");
+            //    vt.UnregisterMonitor(guid);
+            //}
+
+            //Return if not ready
+            if (!kPMCore.fetch.vessel_register.ContainsKey(this.vessel.id)) return;
+
+            //Get Vessel Track
+            vt = kPMCore.fetch.GetVesselTrack(this.vessel.id);
+
+            //Register Monitor with Vessel Track
+            vt.RegisterMonitor(guid);
+
+            //Response Dictionary
+            response_formats = new Dictionary<string, string>();
 
             //Set Vessel Part Cound
             lastPartCount = this.vessel.parts.Count;
@@ -238,6 +247,9 @@ namespace kOSPropMonitor
             {
                 //Create GUID
                 guid = Guid.NewGuid();
+
+                //Set shipGuid
+                shipGuid = this.vessel.id;
 
                 //Split Multi-Function Buttons String
                 multiFunctionButtonsPOS = new List<int>();
@@ -252,40 +264,23 @@ namespace kOSPropMonitor
 
                 ReadTemplate();
 
-                //Register Vessel and Get Track
-                //kPMCore.fetch.RegisterVessel(this.vessel.id);
-                vt.RegisterMonitor(guid);
-
                 //Register monitor and Keyboard Delegate
                 kPMCore.fetch.RegisterMonitor(this, guid);
 
-                vt.onButtonLabelChange += OnButtonLabelChange;
-                vt.onButtonStateChange += OnButtonStateChange;
-                vt.onFlagLabelChange += OnFlagLabelChange;
-                vt.onFlagStateChange += OnFlagStateChange;
-
-                //Register Buttons and Flags
-                for (int i = vt.buttonLabels.Count; i < multiFunctionButtonsPOS.Count; i++)
-                {
-                    //vt.buttonLabels["button" + i] = buttonEmptyLabel;
-                    //vt.buttonStates["button" + i] = false;
-                    vt.buttonLabels[i] = buttonEmptyLabel;
-                    vt.buttonStates[i] = false;
-                }
-
-                for (int i = vt.flagLabels.Count; i < flagCount; i++)
-                {
-                    vt.flagLabels[i] = flagEmptyLabel;
-                    vt.flagStates[i] = false;
-                }
-
-                //Add Getters and Setters
-                //foreach (SharedObjects so in processor_shares)
-                //{
-                //    //AddGettersAndSetters(so);
-                //}
-
                 initialized = true;
+            }
+            
+            //Register Buttons and Flags
+            for (int i = vt.buttonLabels.Count; i < multiFunctionButtonsPOS.Count; i++)
+            {
+                vt.buttonLabels[i] = buttonEmptyLabel;
+                vt.buttonStates[i] = false;
+            }
+
+            for (int i = vt.flagLabels.Count; i < flagCount; i++)
+            {
+                vt.flagLabels[i] = flagEmptyLabel;
+                vt.flagStates[i] = false;
             }
 
             foreach (kPMAPI kpmapi in vt.kpmAPI)
@@ -310,8 +305,8 @@ namespace kOSPropMonitor
                     kpmapi.GetFlags().flagStates[kvpair.Key] = (kvpair.Value);
                 }
             }
-
-            Debug.Log("kOSMonitor Initialized!");
+            reconfiguring = false;
+            Debug.Log("kPM: kOSMonitor Initialized!");
         }
 
         public string ContentProcessor(int screenWidth, int screenHeight)
@@ -383,18 +378,7 @@ namespace kOSPropMonitor
                 {
                     //Set power state from SharedObjects
                     isPowered = processor_shares[current_processor_id].Window.IsPowered;
-
-                    //Reset getters and setters on power-up
-                    if (!isPowered)
-                    {
-                        Debug.Log("kOSMonitor Adding Boot-Up Event");
-                        processors[current_processor_id].TogglePower();
-                        wasOff[current_processor_id] = 0.00f;
-                    }
-                    else
-                    {
-                        processors[current_processor_id].TogglePower();
-                    }
+                    processors[current_processor_id].TogglePower();
                 }
 
                 //Programmable Buttons
@@ -575,34 +559,6 @@ namespace kOSPropMonitor
         {
             vt.flagStates[index] = state;
         }
-
-        //void AddGettersAndSetters(SharedObjects so)
-        //{
-        //    //Looping doesn't seem to work - I'm sure there's another way to do this, but this is simple enough
-        //
-        //    //Flags
-        //    for (int i = 0; i < vt.flagStates.Count; i ++)
-        //    {
-        //        string flagname = "FLAG" + i;
-        //        Debug.Log("kOSMonitor: Registering Flag " + flagname);
-        //        so.BindingMgr.AddGetter(flagname, () => vt.flagStates[flagname.ToLower()]);
-        //        so.BindingMgr.AddSetter(flagname, value => vt.flagStates[flagname.ToLower()] = (bool)value);
-        //
-        //        so.BindingMgr.AddGetter(flagname + "LABEL", () => vt.flagLabels[flagname.ToLower()]);
-        //        so.BindingMgr.AddSetter(flagname + "LABEL", value => vt.flagLabels[flagname.ToLower()] = (string)value);
-        //    }
-        //    //Buttons
-        //    for (int i = 0; i < vt.buttonStates.Count; i++)
-        //    {
-        //        string buttonname = "BUTTON" + i;
-        //        Debug.Log("kOSMonitor: Registering Button " + buttonname);
-        //        so.BindingMgr.AddGetter(buttonname, () => vt.buttonStates[buttonname.ToLower()]);
-        //        so.BindingMgr.AddSetter(buttonname, value => vt.buttonStates[buttonname.ToLower()] = (bool)value);
-        //        
-        //        so.BindingMgr.AddGetter(buttonname + "LABEL", () => vt.buttonLabels[buttonname.ToLower()]);
-        //        so.BindingMgr.AddSetter(buttonname + "LABEL", value => vt.buttonLabels[buttonname.ToLower()] = (string)value);
-        //    }
-        //}
 
         void SetFlags()
         {

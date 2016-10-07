@@ -82,14 +82,6 @@ namespace kOSPropMonitor
                     Unlock();
                 }
             }
-
-            foreach(KeyValuePair<Guid, kPMVesselTrack> tracking in vessel_register)
-            {
-                foreach(kPMAPI api in tracking.Value.kpmAPI)
-                {
-                    api.Update();
-                }
-            }
         }
 
         void OnGUI()
@@ -273,7 +265,6 @@ namespace kOSPropMonitor
 
     class kPMVesselTrack
     {
-        public List<kPMAPI> kpmAPI;
         public Dictionary<int, bool> buttonStates;
         public Dictionary<int, string> buttonLabels;
         public Dictionary<int, string> buttonID;
@@ -283,7 +274,6 @@ namespace kOSPropMonitor
 
         public kPMVesselTrack()
         {
-            kpmAPI = new List<kPMAPI>();
             buttonStates = new Dictionary<int, bool>();
             buttonLabels = new Dictionary<int, string>();
             buttonID = new Dictionary<int, string>();
@@ -294,63 +284,11 @@ namespace kOSPropMonitor
 
         public void RegisterMonitor(Guid monitorID)
         {
-            if (!monitors.Contains(monitorID)) monitors.Add(monitorID);
-        }
-
-        public void UnregisterMonitor(Guid monitorID)
-        {
-            if (monitors.Contains(monitorID)) monitors.Remove(monitorID);
-        }
-
-        public void RegisterAPI(kPMAPI api)
-        {
-            api.GetButtons().onButtonStateChange += ChangeButtonState;
-            api.GetButtons().onButtonLabelChange += ChangeButtonLabel;
-            api.GetFlags().onFlagStateChange += ChangeFlagState;
-            api.GetFlags().onFlagLabelChange += ChangeFlagLabel;
-            kpmAPI.Add(api);
-        }
-
-        public void DeregisterAPI(kPMAPI api)
-        {
-            api.GetButtons().onButtonStateChange -= ChangeButtonState;
-            api.GetButtons().onButtonLabelChange -= ChangeButtonLabel;
-            api.GetFlags().onFlagStateChange -= ChangeFlagState;
-            api.GetFlags().onFlagLabelChange -= ChangeFlagLabel;
-            kpmAPI.Remove(api);
-        }
-
-        //public int ReconfigureAPI()
-        //{
-        //    int reloaded = 0;
-        //    foreach (kPMAPI api in kpmAPI)
-        //    {
-        //        if (api.Reconfigure())
-        //        {
-        //            reloaded += 1;
-        //        }
-        //    }
-        //    return reloaded;
-        //}
-
-        public void ChangeButtonState(int button, bool value)
-        {
-            buttonStates[button] = value;
-        }
-
-        public void ChangeButtonLabel(int button, string value)
-        {
-            buttonLabels[button] = value;
-        }
-
-        public void ChangeFlagState(int flag, bool value)
-        {
-            flagStates[flag] = value;
-        }
-
-        public void ChangeFlagLabel(int flag, string value)
-        {
-            flagLabels[flag] = value;
+            foreach (KeyValuePair<Guid, kPMVesselTrack> kvpair in kPMCore.fetch.vessel_register)
+            {
+                if (kvpair.Value.monitors.Contains(monitorID)) kvpair.Value.monitors.Remove(monitorID);
+            }
+            monitors.Add(monitorID);
         }
     }
 }

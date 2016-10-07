@@ -87,9 +87,6 @@ namespace kOSPropMonitor
         private char[] delimiterChars = { ' ', ',', '.', ':'};
         private Dictionary<string, string> response_formats;
         private Guid guid;
-        //private bool reconfigure;
-        private bool reconfiguring;
-        private Guid shipGuid;
 
         //kOS Processor Variables
         private bool isPowered = false;
@@ -119,21 +116,12 @@ namespace kOSPropMonitor
                 if (initialized)
                 {
                     //Check for destruction
-                    if (this.vessel.parts.Count != lastPartCount || reconfiguring)
+                    if (this.vessel.parts.Count != lastPartCount)
                     {
                         Debug.Log("kPM: Ship Reconfiguring");
-                        reconfiguring = true;
                         Initialize(screenWidth, screenHeight);
                         return;
                     }
-
-                    //if (this.vessel.id != shipGuid)
-                    //{
-                    //    Debug.Log("kPM: Ship ID Changed! Reconfiguring API");
-                    //    reconfigure = true;
-                    //    Initialize(screenWidth, screenHeight);
-                    //    return;
-                    //}
 
                     //Set power state from SharedObjects
                     isPowered = processor_shares[current_processor_id].Window.IsPowered;
@@ -215,20 +203,8 @@ namespace kOSPropMonitor
             //Return Early If No Processor
             if (!processorIsInstalled) return;
 
-            //Reconfigure if needed
-            //if (reconfigure)
-            //{
-            //    //reconfiguring = true;
-            //    if (vt.ReconfigureAPI() == 0) return;
-            //    //reconfigure = false;
-            //    //reconfiguring = false;
-            //    //shipGuid = this.vessel.id;
-            //    Debug.Log("kPM: Completed Reconfiguring API");
-            //    vt.UnregisterMonitor(guid);
-            //}
-
-            //Return if not ready
-            if (!kPMCore.fetch.vessel_register.ContainsKey(this.vessel.id)) return;
+            //Register Vessel
+            kPMCore.fetch.RegisterVessel(this.vessel.id); ;
 
             //Get Vessel Track
             vt = kPMCore.fetch.GetVesselTrack(this.vessel.id);
@@ -247,9 +223,6 @@ namespace kOSPropMonitor
             {
                 //Create GUID
                 guid = Guid.NewGuid();
-
-                //Set shipGuid
-                shipGuid = this.vessel.id;
 
                 //Split Multi-Function Buttons String
                 multiFunctionButtonsPOS = new List<int>();
@@ -282,30 +255,7 @@ namespace kOSPropMonitor
                 vt.flagLabels[i] = flagEmptyLabel;
                 vt.flagStates[i] = false;
             }
-
-            foreach (kPMAPI kpmapi in vt.kpmAPI)
-            {
-                foreach (KeyValuePair<int, string> kvpair in vt.buttonLabels)
-                {
-                    kpmapi.GetButtons().buttonLabels[kvpair.Key] = (kvpair.Value);
-                }
-
-                foreach (KeyValuePair<int, bool> kvpair in vt.buttonStates)
-                {
-                    kpmapi.GetButtons().buttonStates[kvpair.Key] = (kvpair.Value);
-                }
-
-                foreach (KeyValuePair<int, string> kvpair in vt.flagLabels)
-                {
-                    kpmapi.GetFlags().flagLabels[kvpair.Key] = (kvpair.Value);
-                }
-
-                foreach (KeyValuePair<int, bool> kvpair in vt.flagStates)
-                {
-                    kpmapi.GetFlags().flagStates[kvpair.Key] = (kvpair.Value);
-                }
-            }
-            reconfiguring = false;
+            
             Debug.Log("kPM: kOSMonitor Initialized!");
         }
 
@@ -394,11 +344,6 @@ namespace kOSPropMonitor
             {
                 int bID = multiFunctionButtonsPOS.IndexOf(ID);
                 vt.buttonStates[bID] = !vt.buttonStates[bID];
-
-                foreach(kPMAPI api in vt.kpmAPI)
-                {
-                    api.GetButtons().buttonStates[bID] = vt.buttonStates[bID];
-                }
             }
         }
 

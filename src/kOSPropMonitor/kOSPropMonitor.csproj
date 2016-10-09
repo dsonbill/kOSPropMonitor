@@ -31,6 +31,9 @@
     <ConsolePause>false</ConsolePause>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="JsonFx">
+      <HintPath>..\..\..\ModStatistics\JsonFx.dll</HintPath>
+    </Reference>
     <Reference Include="KSPUtil">
       <HintPath>..\KSPUtil.dll</HintPath>
     </Reference>

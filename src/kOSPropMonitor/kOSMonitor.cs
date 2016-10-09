@@ -6,6 +6,7 @@ using UnityEngine;
 using kOS;
 using kOS.Safe.Screen;
 using kOS.Module;
+using JsonFx.Json;
 
 namespace kOSPropMonitor
 {
@@ -44,6 +45,8 @@ namespace kOSPropMonitor
         public int flagCount = 14;
         [KSPField]
         public string template = "";
+        [KSPField]
+        public string replacements = "";
         [KSPField]
         public string buttonSide = "##########";
         [KSPField]
@@ -88,6 +91,7 @@ namespace kOSPropMonitor
         private List<int> multiFunctionButtonsPOS;
         private char[] delimiterChars = { ' ', ',', '.', ':'};
         private Dictionary<string, string> response_formats;
+        private Dictionary<string, object> replacement_formats;
         private Guid guid;
 
         //kOS Processor Variables
@@ -116,6 +120,15 @@ namespace kOSPropMonitor
         private IScreenSnapShot mostRecentScreen;
         private int screenWidth = 0;
         private int screenHeight = 0;
+        private string currentConsoleColor
+        {
+            get
+            {
+                //I Don't Understand What's Happened Here
+                if (!isPowered) return textTint;
+                return textTintUnpowered;
+            }
+        }
 
         public override void OnUpdate()
         {
@@ -274,10 +287,12 @@ namespace kOSPropMonitor
                     }
                 }
 
-                //Response Dictionary
+                //Format Dictionaries
                 response_formats = new Dictionary<string, string>();
-
+                replacement_formats = new Dictionary<string, object>();
+                
                 ReadTemplate();
+                ReadReplacements();
 
                 //Register monitor and Keyboard Delegate
                 kPMCore.fetch.RegisterMonitor(this, guid);
@@ -307,7 +322,7 @@ namespace kOSPropMonitor
             }
 
             // Everything flows through here
-            return response;
+            return Utilities.FreeFormat(response, replacement_formats).Replace("{COLOR}", currentConsoleColor);
         }
 
         public void ButtonProcessor(int buttonID)
@@ -343,7 +358,6 @@ namespace kOSPropMonitor
                         ToggleLock();
                     }
                 }
-
 
                 //Connect Button
                 else if (buttonID == connectButton)
@@ -431,12 +445,43 @@ namespace kOSPropMonitor
             using (StreamReader sr = File.OpenText(FILE_NAME))
             {
                 unformattedTemplate = "";
-                String input;
+                string input;
                 while ((input = sr.ReadLine()) != null)
                 {
                     unformattedTemplate += input + Environment.NewLine;
                 }
                 sr.Close();
+            }
+        }
+
+        void ReadReplacements()
+        {
+            string FILE_NAME = Path.Combine(Path.Combine(KSPUtil.ApplicationRootPath, "GameData"), replacements);
+            if (!File.Exists(FILE_NAME))
+            {
+                UnityEngine.Debug.Log(string.Format("kOSMonitor: Replacements {0} does not exist.", FILE_NAME));
+                return;
+            }
+            string json = "";
+            using (StreamReader sr = File.OpenText(FILE_NAME))
+            {
+                
+                string input;
+                while ((input = sr.ReadLine()) != null)
+                {
+                    json += input + Environment.NewLine;
+                }
+                sr.Close();
+            }
+
+            JsonReader reader = new JsonReader();
+            try
+            {
+                replacement_formats = reader.Read<Dictionary<string, object>>(json);
+            }
+            catch (Exception e)
+            {
+                Debug.Log("kPM: Error Loading JSON File: " + e.Message);
             }
         }
 

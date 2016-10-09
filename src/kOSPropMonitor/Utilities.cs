@@ -14,8 +14,16 @@ namespace kOSPropMonitor
             return input;
         }
 
-        public static string FreeFormat(string input, Dictionary<string, object> p)
+        public static string FreeFormat(string input, Dictionary<string, object> p, bool toUpper)
         {
+            if (toUpper)
+            {
+                foreach (KeyValuePair<string, object> kvpair in p)
+                    input = ReplaceString(input, kvpair.Key, (kvpair.Value).ToString().ToUpper(), StringComparison.InvariantCultureIgnoreCase);
+
+                return input;
+            }
+
             foreach (KeyValuePair<string, object> kvpair in p)
                 input = ReplaceString(input, kvpair.Key, (kvpair.Value).ToString(), StringComparison.InvariantCultureIgnoreCase);
 

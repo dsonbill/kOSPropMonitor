@@ -62,6 +62,8 @@ namespace kOSPropMonitor
         [KSPField]
         public string textTint = "[#009900ff]";
         [KSPField]
+        public string coloredTextTint = "[#ffffffff]";
+        [KSPField]
         public string textTintUnpowered = "[#ffffff3e]";
         [KSPField]
         public string textTintButtonOn = "[#009900ff]";
@@ -83,6 +85,10 @@ namespace kOSPropMonitor
         public int consoleHeight = 20;
         [KSPField]
         public bool longGuid = false;
+        [KSPField]
+        public bool coloredTerminal = true;
+        [KSPField]
+        public bool replacementsToUpper = false;
 
         //General Variables
         private bool initialized = false;
@@ -104,7 +110,6 @@ namespace kOSPropMonitor
         //kOS Terminal Variables
         private bool consumeEvent;
         private bool isLocked = false;
-        private string response = "kOS Terminal Standing By";
         private string unformattedTemplate;
         private int monitorIndex = 0;
         public bool upButtonState = false;
@@ -113,22 +118,41 @@ namespace kOSPropMonitor
         public bool rightButtonState = false;
         public bool enterButtonState = false;
         public bool cancelButtonState = false;
-
-        //private string consoleBuffer;
         private float cursorBlinkTime;
-        private string currentTextTint;
-        private IScreenSnapShot mostRecentScreen;
-        private int screenWidth = 0;
-        private int screenHeight = 0;
-        private string currentConsoleColor
+        private string currentTextTint
         {
             get
             {
-                //I Don't Understand What's Happened Here
-                if (!isPowered) return textTint;
+                if (isPowered)
+                {
+                    if (coloredTerminal) return coloredTextTint;
+                    return textTint;
+                }
                 return textTintUnpowered;
             }
         }
+        private string response
+        {
+            get
+            {
+                if (processorIsInstalled)
+                {
+                    if (response_formats != null && replacement_formats != null)
+                    {
+                        string output = Utilities.Format(unformattedTemplate, response_formats);
+                        if (coloredTerminal) output = Utilities.FreeFormat(output, replacement_formats, replacementsToUpper).Replace("{COLOR}", currentTextTint);
+                        output = SetButtons(output);
+                        output = SetFlags(output);
+                        return output;
+                    }
+                    return "kOS Terminal Standing By";
+                }
+                return "Processor Not Installed!";
+            }
+        }
+        private IScreenSnapShot mostRecentScreen;
+        private int screenWidth = 0;
+        private int screenHeight = 0;
 
         public override void OnUpdate()
         {
@@ -148,13 +172,8 @@ namespace kOSPropMonitor
                     isPowered = processor_shares[current_processor_id].Window.IsPowered;
 
                     //Set Power State Logic
-                    if (isPowered)
+                    if (!isPowered)
                     {
-                        currentTextTint = textTint;
-                    }
-                    else
-                    {
-                        currentTextTint = textTintUnpowered;
                         if (isLocked)
                         {
                             ToggleLock();
@@ -171,11 +190,6 @@ namespace kOSPropMonitor
                     {
                         processor_shares[current_processor_id].Screen.SetSize(consoleHeight, consoleWidth);
                     }
-
-                    //Format Response
-                    response = Utilities.Format(unformattedTemplate, response_formats);
-                    SetButtons();
-                    SetFlags();
 
                     //Consume event - IDEK
                     if (consumeEvent)
@@ -248,7 +262,6 @@ namespace kOSPropMonitor
                 monitorIndex = vt.monitors.Count;
 
                 //Create or Get GUID
-                //SOMETHING HERE!
                 if (vt.registeredMonitors.Count > monitorIndex) guid = vt.registeredMonitors[monitorIndex];
                 else guid = Guid.NewGuid();
 
@@ -316,13 +329,8 @@ namespace kOSPropMonitor
                 }
             }
 
-            if (!processorIsInstalled)
-            {
-                response = "kOS is not installed!";
-            }
-
             // Everything flows through here
-            return Utilities.FreeFormat(response, replacement_formats).Replace("{COLOR}", currentConsoleColor);
+            return response;
         }
 
         public void ButtonProcessor(int buttonID)
@@ -535,15 +543,6 @@ namespace kOSPropMonitor
         {
             isPowered = processor_shares[current_processor_id].Window.IsPowered;
 
-            if (isPowered)
-            {
-                currentTextTint = textTint;
-            }
-            else
-            {
-                currentTextTint = textTintUnpowered;
-            }
-
             response_formats["currentCPU"] = currentTextTint + current_processor_id + "[#FFFFFF]";
 
             for (int processor_entry_count = 0; processor_entry_count < processors.Count / 4 + 1; processor_entry_count++)
@@ -563,15 +562,6 @@ namespace kOSPropMonitor
 
                         isPowered = processor_shares[current_position + lrange].Window.IsPowered;
 
-                        if (isPowered)
-                        {
-                            currentTextTint = textTint;
-                        }
-                        else
-                        {
-                            currentTextTint = textTintUnpowered;
-                        }
-
                         if (current_position + lrange == current_processor_id)
                         {
                             response_formats["CPU" + (lrange + 1)] = currentTextTint + " CPU  " + (current_position + lrange) + "[#FFFFFF]";
@@ -586,9 +576,10 @@ namespace kOSPropMonitor
             }
         }
 
-        void SetFlags()
+        string SetFlags(string input)
         {
             string color = "";
+            string output = input;
             foreach (KeyValuePair<int, bool> kvpair in vt.flagStates[monitorIndex])
             {
                 if (kvpair.Value)
@@ -602,9 +593,9 @@ namespace kOSPropMonitor
                 string sub = kvpair.Key.ToString();
                 try
                 {
-                    response = response.Replace("{flagSide" + sub + "}", (color + flagSide + "[#FFFFFF]"));
-                    response = response.Replace("{flagSideSmall" + sub + "}", (color + flagSideSmall + "[#FFFFFF]"));
-                    response = response.Replace("{flagLabel" + sub + "}", (color + vt.flagLabels[monitorIndex][kvpair.Key]) + "[#FFFFFF]");
+                    output = output.Replace("{flagSide" + sub + "}", (color + flagSide + "[#FFFFFF]"));
+                    output = output.Replace("{flagSideSmall" + sub + "}", (color + flagSideSmall + "[#FFFFFF]"));
+                    output = output.Replace("{flagLabel" + sub + "}", (color + vt.flagLabels[monitorIndex][kvpair.Key]) + "[#FFFFFF]");
                 }
                 catch
                 {
@@ -623,7 +614,7 @@ namespace kOSPropMonitor
 
             try
             {
-                response = response.Replace("{keyboardFlag}", (color + keyboardActiveLabel));
+                output = output.Replace("{keyboardFlag}", (color + keyboardActiveLabel));
             }
             catch
             {
@@ -632,17 +623,19 @@ namespace kOSPropMonitor
 
             try
             {
-                if (!longGuid) response = response.Replace("{GUID}", guid.ToString().Substring(0, 8));
-                else response = response.Replace("{GUID}", guid.ToString());
+                if (!longGuid) output = output.Replace("{GUID}", guid.ToString().Substring(0, 8));
+                else output = output.Replace("{GUID}", guid.ToString());
             }
             catch
             {
                 Debug.Log("kOSMonitor: Error setting GUID flag!");
             }
+            return output;
         }
 
-        void SetButtons()
+        string SetButtons(string input)
         {
+            string output = input;
             foreach (KeyValuePair<int, bool> kvpair in vt.buttonStates[monitorIndex])
             {
                 string color = "";
@@ -657,15 +650,16 @@ namespace kOSPropMonitor
                 string sub = kvpair.Key.ToString();
                 try
                 {
-                    response = response.Replace("{buttonSide" + sub + "}", color + buttonSide + "[#FFFFFF]");
-                    response = response.Replace("{buttonSideSmall" + sub + "}", color + buttonSideSmall + "[#FFFFFF]");
-                    response = response.Replace("{buttonLabel" + sub + "}", color + vt.buttonLabels[monitorIndex][kvpair.Key] + "[#FFFFFF]");
+                    output = output.Replace("{buttonSide" + sub + "}", color + buttonSide + "[#FFFFFF]");
+                    output = output.Replace("{buttonSideSmall" + sub + "}", color + buttonSideSmall + "[#FFFFFF]");
+                    output = output.Replace("{buttonLabel" + sub + "}", color + vt.buttonLabels[monitorIndex][kvpair.Key] + "[#FFFFFF]");
                 }
                 catch
                 {
                     Debug.Log("kOSMonitor: Error in templating for buttons!");
                 }
             }
+            return output;
         }
 
 

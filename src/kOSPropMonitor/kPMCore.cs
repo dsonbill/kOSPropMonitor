@@ -119,7 +119,7 @@ namespace kOSPropMonitor
         {
             if (vessel_register.ContainsKey(vesselID))
             {
-                foreach (Guid id in vessel_register[vesselID].monitors.Values)
+                foreach (Guid id in vessel_register[vesselID].registeredMonitors.Values)
                 {
                     monitor_register.Remove(id);
                 }
@@ -278,6 +278,7 @@ namespace kOSPropMonitor
         public Dictionary<int, Guid> monitors = new Dictionary<int, Guid>();
         public Dictionary<int, Guid> registeredMonitors = new Dictionary<int, Guid>();
         public bool reconfigured;
+        public bool recentlyCreated = true;
         public Dictionary<int, Dictionary<int, string>> buttonLabels = new Dictionary<int, Dictionary<int, string>>();
         public Dictionary<int, Dictionary<int, bool>> buttonStates = new Dictionary<int, Dictionary<int, bool>>();
         public Dictionary<int, Dictionary<int, string>> flagLabels = new Dictionary<int, Dictionary<int, string>>();
@@ -313,6 +314,10 @@ namespace kOSPropMonitor
 
         public void Update()
         {
+            if (recentlyCreated && registeredMonitors.Count > 0) recentlyCreated = false;
+
+            if (!recentlyCreated && registeredMonitors.Count == 0) kPMCore.fetch.DeregisterVessel(vesselGuid);
+
             if (FlightGlobals.fetch.activeVessel.id != vesselGuid && !reconfigured)
             {
                 Debug.Log("kPM: Reconfiguring Vessel");

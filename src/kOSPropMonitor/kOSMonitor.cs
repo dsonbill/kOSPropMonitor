@@ -78,10 +78,12 @@ namespace kOSPropMonitor
         public int consoleWidth = 40;
         [KSPField]
         public int consoleHeight = 20;
+        [KSPField]
+        public bool longGuid = false;
 
         //General Variables
         private bool initialized = false;
-        private kPMVesselTrack vt;
+        private kPMVesselMonitors vt;
         private int lastPartCount = 0;
         private List<int> multiFunctionButtonsPOS;
         private char[] delimiterChars = { ' ', ',', '.', ':'};
@@ -100,22 +102,28 @@ namespace kOSPropMonitor
         private bool isLocked = false;
         private string response = "kOS Terminal Standing By";
         private string unformattedTemplate;
+        private int monitorIndex = 0;
+        public bool upButtonState = false;
+        public bool downButtonState = false;
+        public bool leftButtonState = false;
+        public bool rightButtonState = false;
+        public bool enterButtonState = false;
+        public bool cancelButtonState = false;
 
         //private string consoleBuffer;
         private float cursorBlinkTime;
         private string currentTextTint;
         private IScreenSnapShot mostRecentScreen;
-        private int screenWidth;
-        private int screenHeight;
+        private int screenWidth = 0;
+        private int screenHeight = 0;
 
         public override void OnUpdate()
         {
-            Debug.Log("kPM: Vessel ID by Monitor is: " + this.vessel.id);
             if (processorIsInstalled)
             {
                 if (initialized)
                 {
-                    //Check for destruction
+                    //Check for destruction or separation
                     if (this.vessel.parts.Count != lastPartCount)
                     {
                         Debug.Log("kPM: Ship Reconfiguring");
@@ -168,15 +176,23 @@ namespace kOSPropMonitor
                 if (cursorBlinkTime > 1)
                     cursorBlinkTime -= 1;
             }
-            else if (isLocked)
+            else
             {
-                ToggleLock();
-            }
+                if (this.vessel.parts.Count != lastPartCount)
+                {
+                    Debug.Log("kPM: Ship Reconfiguring");
+                    Initialize(screenWidth, screenHeight);
+                    return;
+                }
+                if (isLocked)
+                {
+                    ToggleLock();
+                }
+            } 
         }
 
         public void Initialize(int screenWidth, int screenHeight)
         {
-
             //Set Processor Installed Flag
             processorIsInstalled = false;
 
@@ -204,16 +220,10 @@ namespace kOSPropMonitor
             if (!processorIsInstalled) return;
 
             //Register Vessel
-            kPMCore.fetch.RegisterVessel(this.vessel.id); ;
+            kPMCore.fetch.RegisterVessel(this.vessel.id);
 
             //Get Vessel Track
-            vt = kPMCore.fetch.GetVesselTrack(this.vessel.id);
-
-            //Register Monitor with Vessel Track
-            vt.RegisterMonitor(guid);
-
-            //Response Dictionary
-            response_formats = new Dictionary<string, string>();
+            vt = kPMCore.fetch.GetVesselMonitors(this.vessel.id);
 
             //Set Vessel Part Cound
             lastPartCount = this.vessel.parts.Count;
@@ -221,8 +231,16 @@ namespace kOSPropMonitor
             //Single-Init Actions
             if (!initialized)
             {
-                //Create GUID
-                guid = Guid.NewGuid();
+                //Set Index
+                monitorIndex = vt.monitors.Count;
+
+                //Create or Get GUID
+                //SOMETHING HERE!
+                if (vt.registeredMonitors.Count > monitorIndex) guid = vt.registeredMonitors[monitorIndex];
+                else guid = Guid.NewGuid();
+
+                //Register Monitor
+                vt.RegisterMonitor(guid);
 
                 //Split Multi-Function Buttons String
                 multiFunctionButtonsPOS = new List<int>();
@@ -235,25 +253,36 @@ namespace kOSPropMonitor
                     }
                 }
 
+                //Register Buttons and Flags
+                if (!vt.buttonLabels.ContainsKey(monitorIndex))
+                {
+                    vt.buttonLabels[monitorIndex] = new Dictionary<int, string>();
+                    vt.buttonStates[monitorIndex] = new Dictionary<int, bool>();
+                    vt.flagLabels[monitorIndex] = new Dictionary<int, string>();
+                    vt.flagStates[monitorIndex] = new Dictionary<int, bool>();
+
+                    for (int i = vt.buttonLabels[monitorIndex].Count; i < multiFunctionButtonsPOS.Count; i++)
+                    {
+                        vt.buttonLabels[monitorIndex][i] = buttonEmptyLabel;
+                        vt.buttonStates[monitorIndex][i] = false;
+                    }
+
+                    for (int i = vt.flagLabels[monitorIndex].Count; i < flagCount; i++)
+                    {
+                        vt.flagLabels[monitorIndex][i] = flagEmptyLabel;
+                        vt.flagStates[monitorIndex][i] = false;
+                    }
+                }
+
+                //Response Dictionary
+                response_formats = new Dictionary<string, string>();
+
                 ReadTemplate();
 
                 //Register monitor and Keyboard Delegate
                 kPMCore.fetch.RegisterMonitor(this, guid);
 
                 initialized = true;
-            }
-            
-            //Register Buttons and Flags
-            for (int i = vt.buttonLabels.Count; i < multiFunctionButtonsPOS.Count; i++)
-            {
-                vt.buttonLabels[i] = buttonEmptyLabel;
-                vt.buttonStates[i] = false;
-            }
-
-            for (int i = vt.flagLabels.Count; i < flagCount; i++)
-            {
-                vt.flagLabels[i] = flagEmptyLabel;
-                vt.flagStates[i] = false;
             }
             
             Debug.Log("kPM: kOSMonitor Initialized!");
@@ -266,9 +295,9 @@ namespace kOSPropMonitor
             {
                 if (this.vessel != null)
                 {
-                    Initialize(screenWidth, screenHeight);
                     this.screenWidth = screenWidth;
                     this.screenHeight = screenHeight;
+                    Initialize(screenWidth, screenHeight);
                 }
             }
 
@@ -322,6 +351,33 @@ namespace kOSPropMonitor
                     ToggleLock();
                 }
 
+                //Arrow Buttons
+                else if (buttonID == upButton)
+                {
+                    upButtonState = !upButtonState;
+                }
+                else if (buttonID == downButton)
+                {
+                    downButtonState = !downButtonState;
+                }
+                else if (buttonID == leftButton)
+                {
+                    leftButtonState = !leftButtonState;
+                }
+                else if (buttonID == rightButton)
+                {
+                    rightButtonState = !rightButtonState;
+                }
+
+                //Enter and Cancel
+                else if (buttonID == enterButton)
+                {
+                    enterButtonState = !enterButtonState;
+                }
+                else if (buttonID == cancelButton)
+                {
+                    cancelButtonState = !cancelButtonState;
+                }
 
                 //Power Toggle Button
                 else if (buttonID == toggleProcessorPowerButton)
@@ -343,7 +399,7 @@ namespace kOSPropMonitor
             if (multiFunctionButtonsPOS.Contains(ID))
             {
                 int bID = multiFunctionButtonsPOS.IndexOf(ID);
-                vt.buttonStates[bID] = !vt.buttonStates[bID];
+                vt.buttonStates[monitorIndex][bID] = !vt.buttonStates[monitorIndex][bID];
             }
         }
 
@@ -485,30 +541,10 @@ namespace kOSPropMonitor
             }
         }
 
-        void OnButtonLabelChange(int index, string label)
-        {
-            vt.buttonLabels[index] = label;
-        }
-
-        void OnButtonStateChange(int index, bool state)
-        {
-            vt.buttonStates[index] = state;
-        }
-
-        void OnFlagLabelChange(int index, string label)
-        {
-            vt.flagLabels[index] = label;
-        }
-
-        void OnFlagStateChange(int index, bool state)
-        {
-            vt.flagStates[index] = state;
-        }
-
         void SetFlags()
         {
             string color = "";
-            foreach (KeyValuePair<int, bool> kvpair in vt.flagStates)
+            foreach (KeyValuePair<int, bool> kvpair in vt.flagStates[monitorIndex])
             {
                 if (kvpair.Value)
                 {
@@ -523,7 +559,7 @@ namespace kOSPropMonitor
                 {
                     response = response.Replace("{flagSide" + sub + "}", (color + flagSide + "[#FFFFFF]"));
                     response = response.Replace("{flagSideSmall" + sub + "}", (color + flagSideSmall + "[#FFFFFF]"));
-                    response = response.Replace("{flagLabel" + sub + "}", (color + vt.flagLabels[kvpair.Key]) + "[#FFFFFF]");
+                    response = response.Replace("{flagLabel" + sub + "}", (color + vt.flagLabels[monitorIndex][kvpair.Key]) + "[#FFFFFF]");
                 }
                 catch
                 {
@@ -551,7 +587,8 @@ namespace kOSPropMonitor
 
             try
             {
-                response = response.Replace("{GUID}", guid.ToString());
+                if (!longGuid) response = response.Replace("{GUID}", guid.ToString().Substring(0, 8));
+                else response = response.Replace("{GUID}", guid.ToString());
             }
             catch
             {
@@ -561,7 +598,7 @@ namespace kOSPropMonitor
 
         void SetButtons()
         {
-            foreach (KeyValuePair<int, bool> kvpair in vt.buttonStates)
+            foreach (KeyValuePair<int, bool> kvpair in vt.buttonStates[monitorIndex])
             {
                 string color = "";
                 if (kvpair.Value)
@@ -577,7 +614,7 @@ namespace kOSPropMonitor
                 {
                     response = response.Replace("{buttonSide" + sub + "}", color + buttonSide + "[#FFFFFF]");
                     response = response.Replace("{buttonSideSmall" + sub + "}", color + buttonSideSmall + "[#FFFFFF]");
-                    response = response.Replace("{buttonLabel" + sub + "}", color + vt.buttonLabels[kvpair.Key] + "[#FFFFFF]");
+                    response = response.Replace("{buttonLabel" + sub + "}", color + vt.buttonLabels[monitorIndex][kvpair.Key] + "[#FFFFFF]");
                 }
                 catch
                 {
@@ -585,6 +622,7 @@ namespace kOSPropMonitor
                 }
             }
         }
+
 
         //Keyboard Control
         public void ToggleLock()

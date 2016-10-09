@@ -12,11 +12,11 @@ namespace kOSPropMonitor
         private static kPMCore singleton;
 
         //Tracking
-        public Dictionary<Guid, kPMVesselTrack> vessel_register;
+        public Dictionary<Guid, kPMVesselMonitors> vessel_register;
         public Dictionary<Guid, kOSMonitor> monitor_register;
         private string CONTROL_LOCKOUT = "kPMCore";
-        private Guid lock_control;
-        private Guid master_lock;
+        public Guid lock_control { get; private set; }
+        public Guid master_lock { get; private set; }
         private bool wasInFlight;
 
         //Keyboard Memory Variables
@@ -51,7 +51,7 @@ namespace kOSPropMonitor
         {
             //Initialize
             GameObject.DontDestroyOnLoad(this);
-            vessel_register = new Dictionary<Guid, kPMVesselTrack>();
+            vessel_register = new Dictionary<Guid, kPMVesselMonitors>();
             monitor_register = new Dictionary<Guid, kOSMonitor>();
             GameEvents.onVesselDestroy.Add(OnVesselDestroy);
 
@@ -65,22 +65,30 @@ namespace kOSPropMonitor
 
         void Update()
         {
-            if (HighLogic.LoadedScene == GameScenes.FLIGHT && !wasInFlight) wasInFlight = true;
-
-            if (HighLogic.LoadedScene != GameScenes.FLIGHT && wasInFlight)
+            if (HighLogic.LoadedScene != GameScenes.FLIGHT)
             {
-                vessel_register = new Dictionary<Guid, kPMVesselTrack>();
-                monitor_register = new Dictionary<Guid, kOSMonitor>();
-                wasInFlight = false;
-            }
+                if (wasInFlight)
+                {
+                    Debug.Log("kPM: kPMCore Leaving Flight - Reinitializing Registries");
+                    vessel_register = new Dictionary<Guid, kPMVesselMonitors>();
+                    monitor_register = new Dictionary<Guid, kOSMonitor>();
+                    wasInFlight = false;
+                }
 
-            if (lock_control != master_lock)
-            {
                 //No Lock If Not In Flight
-                if (HighLogic.LoadedScene != GameScenes.FLIGHT)
+                if (lock_control != master_lock)
                 {
                     Unlock();
                 }
+
+                return;
+            }
+
+            if (!wasInFlight) wasInFlight = true;
+
+            foreach (kPMVesselMonitors monitors in vessel_register.Values)
+            {
+                monitors.Update();
             }
         }
 
@@ -94,14 +102,7 @@ namespace kOSPropMonitor
 
         private void OnVesselDestroy(Vessel destroyedVessel)
         {
-            if (vessel_register.ContainsKey(destroyedVessel.id))
-            {
-                foreach(Guid monitorID in vessel_register[destroyedVessel.id].monitors)
-                {
-                    monitor_register.Remove(monitorID);
-                }
-                vessel_register.Remove(destroyedVessel.id);
-            }
+            DeregisterVessel(destroyedVessel.id);
             Unlock();
         }
 
@@ -111,20 +112,28 @@ namespace kOSPropMonitor
             {
                 return;
             }
-            vessel_register[vesselID] = new kPMVesselTrack();
+            vessel_register[vesselID] = new kPMVesselMonitors(vesselID);
         }
 
-        public kPMVesselTrack GetVesselTrack(Guid vesselID)
+        public void DeregisterVessel(Guid vesselID)
+        {
+            if (vessel_register.ContainsKey(vesselID))
+            {
+                foreach (Guid id in vessel_register[vesselID].monitors.Values)
+                {
+                    monitor_register.Remove(id);
+                }
+                vessel_register.Remove(vesselID);
+            }
+        }
+
+        public kPMVesselMonitors GetVesselMonitors(Guid vesselID)
         {
             return vessel_register[vesselID];
         }
 
         public void RegisterMonitor(kOSMonitor monitor, Guid monitorID)
         {
-            if (monitor_register.ContainsKey(monitorID))
-            {
-                return;
-            }
             monitor_register[monitorID] = monitor;
         }
 
@@ -263,32 +272,54 @@ namespace kOSPropMonitor
         }
     }
 
-    class kPMVesselTrack
+    class kPMVesselMonitors
     {
-        public Dictionary<int, bool> buttonStates;
-        public Dictionary<int, string> buttonLabels;
-        public Dictionary<int, string> buttonID;
-        public Dictionary<int, bool> flagStates;
-        public Dictionary<int, string> flagLabels;
-        public List<Guid> monitors;
+        public Guid vesselGuid { get; private set; }
+        public Dictionary<int, Guid> monitors = new Dictionary<int, Guid>();
+        public Dictionary<int, Guid> registeredMonitors = new Dictionary<int, Guid>();
+        public bool reconfigured;
+        public Dictionary<int, Dictionary<int, string>> buttonLabels = new Dictionary<int, Dictionary<int, string>>();
+        public Dictionary<int, Dictionary<int, bool>> buttonStates = new Dictionary<int, Dictionary<int, bool>>();
+        public Dictionary<int, Dictionary<int, string>> flagLabels = new Dictionary<int, Dictionary<int, string>>();
+        public Dictionary<int, Dictionary<int, bool>> flagStates = new Dictionary<int, Dictionary<int, bool>>();
 
-        public kPMVesselTrack()
+        public kPMVesselMonitors(Guid id)
         {
-            buttonStates = new Dictionary<int, bool>();
-            buttonLabels = new Dictionary<int, string>();
-            buttonID = new Dictionary<int, string>();
-            flagStates = new Dictionary<int, bool>();
-            flagLabels = new Dictionary<int, string>();
-            monitors = new List<Guid>();
+            vesselGuid = id;
         }
 
         public void RegisterMonitor(Guid monitorID)
         {
-            foreach (KeyValuePair<Guid, kPMVesselTrack> kvpair in kPMCore.fetch.vessel_register)
+            foreach (KeyValuePair<Guid, kPMVesselMonitors> kvpair in kPMCore.fetch.vessel_register)
             {
-                if (kvpair.Value.monitors.Contains(monitorID)) kvpair.Value.monitors.Remove(monitorID);
+                if (kvpair.Value.Equals(this)) continue;
+                foreach (int id in kvpair.Value.monitors.Keys)
+                {
+                    if (kvpair.Value.monitors[id] == monitorID) kvpair.Value.monitors.Remove(id);
+                }
             }
-            monitors.Add(monitorID);
+            if (!monitors.ContainsValue(monitorID)) monitors[monitors.Count] = monitorID;
+
+            foreach (KeyValuePair<Guid, kPMVesselMonitors> kvpair in kPMCore.fetch.vessel_register)
+            {
+                if (kvpair.Value.Equals(this)) continue;
+                foreach (int id in kvpair.Value.registeredMonitors.Keys)
+                {
+                    if (kvpair.Value.registeredMonitors[id] == monitorID) kvpair.Value.registeredMonitors.Remove(id);
+                }
+            }
+            if (!registeredMonitors.ContainsValue(monitorID)) registeredMonitors[registeredMonitors.Count] = monitorID;
+        }
+
+        public void Update()
+        {
+            if (FlightGlobals.fetch.activeVessel.id != vesselGuid && !reconfigured)
+            {
+                Debug.Log("kPM: Reconfiguring Vessel");
+                reconfigured = true;
+                monitors = new Dictionary<int, Guid>();
+            }
+            else if (FlightGlobals.fetch.activeVessel.id == vesselGuid && reconfigured) reconfigured = false;
         }
     }
 }

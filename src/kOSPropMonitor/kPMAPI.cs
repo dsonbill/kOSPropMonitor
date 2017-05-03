@@ -126,7 +126,7 @@ namespace kOSPropMonitor
                 if (value == -5) return kPMCore.fetch.monitor_register[kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors[monitor]].leftButtonState;
                 if (value == -6) return kPMCore.fetch.monitor_register[kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors[monitor]].rightButtonState;
             }
-            if (kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).buttonStates[monitor].ContainsKey(value)) throw new KOSException("Cannot get button status, input out of range.");
+            if (!kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).buttonStates[monitor].ContainsKey(value)) throw new KOSException("Cannot get button status, input out of range.");
             return kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).buttonStates[monitor][value];
         }
 

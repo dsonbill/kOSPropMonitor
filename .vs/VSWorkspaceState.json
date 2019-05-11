@@ -1,0 +1,18 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\GameData",
+    "\\GameData\\kPM",
+    "\\GameData\\kPM\\Library",
+    "\\GameData\\kPM\\Library\\Patches",
+    "\\GameData\\kPM\\Library\\Terminals",
+    "\\GameData\\kPM\\Library\\Textures",
+    "\\Optional\\No Colors",
+    "\\Optional\\No Colors\\GameData",
+    "\\Optional\\No Colors\\GameData\\kPM",
+    "\\Optional\\No Colors\\GameData\\kPM\\Library",
+    "\\Optional\\No Colors\\GameData\\kPM\\Library\\Patches"
+  ],
+  "SelectedNode": "\\src\\kOSPropMonitor.sln",
+  "PreviewInSolutionExplorer": false
+}

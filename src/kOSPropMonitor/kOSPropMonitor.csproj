@@ -32,23 +32,20 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="JsonFx">
-      <HintPath>..\..\..\ModStatistics\JsonFx.dll</HintPath>
-    </Reference>
-    <Reference Include="KSPUtil">
-      <HintPath>..\KSPUtil.dll</HintPath>
+      <HintPath>..\..\GameData\kPM\JsonFx.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\..\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\UnityEngine.dll</HintPath>
+      <HintPath>..\..\UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="kOS">
-      <HintPath>..\kOS.dll</HintPath>
+      <HintPath>..\..\kOS.dll</HintPath>
     </Reference>
     <Reference Include="kOS.Safe">
-      <HintPath>..\kOS.Safe.dll</HintPath>
+      <HintPath>..\..\kOS.Safe.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -70,4 +67,36 @@
       </Properties>
     </MonoDevelop>
   </ProjectExtensions>
+  <Target Name="PostBuildMacros">
+    <GetAssemblyIdentity AssemblyFiles="$(TargetPath)">
+      <Output TaskParameter="Assemblies" ItemName="Targets" />
+    </GetAssemblyIdentity>
+    <ItemGroup>
+      <VersionNumber Include="@(Targets->'%(Version)')" />
+    </ItemGroup>
+  </Target>
+  <PropertyGroup>
+    <PostBuildEventDependsOn>
+    $(PostBuildEventDependsOn);
+    PostBuildMacros;
+  </PostBuildEventDependsOn>
+    <PostBuildEvent>rmdir "$(ProjectDir)..\..\Build" /s /q
+mkdir "$(ProjectDir)..\..\Build"
+mkdir "$(ProjectDir)..\..\Build\kPM"
+
+xcopy "$(TargetDir)$(ProjectName).dll" "$(ProjectDir)..\..\Build\kPM" /y
+xcopy "$(ProjectDir)..\..\GameData\kPM" "$(ProjectDir)..\..\Build\kPM" /e /y /i /r
+
+mkdir "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)"
+mkdir "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)\GameData"
+xcopy "$(ProjectDir)..\..\Build\kPM" "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)\GameData\kPM" /e /y /i /r
+xcopy "$(ProjectDir)..\..\README.md" "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)" /y
+xcopy "$(ProjectDir)..\..\LICENSE" "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)" /y
+xcopy "$(ProjectDir)..\..\JSONFX LICENSE" "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)" /y
+xcopy "$(ProjectDir)..\..\Optional" "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)\Optional" /e /y /i /r
+
+powershell Compress-Archive -Path "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)" -DestinationPath "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber).zip"
+
+rmdir "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)" /s /q</PostBuildEvent>
+  </PropertyGroup>
 </Project>

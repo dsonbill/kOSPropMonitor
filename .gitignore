@@ -4,5 +4,7 @@ kOSPropMonitor.userprefs
 src/kOSPropMonitor/obj/*
 src/.vs
 Build
+.vs
 
 !GameData/kPM/JsonFx.dll
+

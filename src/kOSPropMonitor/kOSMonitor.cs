@@ -531,7 +531,8 @@ namespace kOSPropMonitor
                             line += cursor;
                         }
 
-                        line += lineBuffer[column];
+						// RPM uses the hashcode of the text for some optimizations, and C#'s hash algorithm stops at internal null chars
+                        line += lineBuffer[column] == 0 ? ' ' : lineBuffer[column];
                     }
 
                     response_formats["l" + (row + 1)] = currentTextTint + line + "[#ffffffff]";

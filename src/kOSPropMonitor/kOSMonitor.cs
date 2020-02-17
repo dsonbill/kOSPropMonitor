@@ -6,6 +6,7 @@ using UnityEngine;
 using kOS;
 using kOS.Safe.Screen;
 using kOS.Module;
+using kOS.Safe.Encapsulation;
 using JsonFx.Json;
 
 namespace kOSPropMonitor
@@ -113,11 +114,17 @@ namespace kOSPropMonitor
         private string unformattedTemplate;
         private int monitorIndex = 0;
         public bool upButtonState = false;
+        public UserDelegate upButtonDelegate;
         public bool downButtonState = false;
+        public UserDelegate downButtonDelegate;
         public bool leftButtonState = false;
+        public UserDelegate leftButtonDelegate;
         public bool rightButtonState = false;
+        public UserDelegate rightButtonDelegate;
         public bool enterButtonState = false;
+        public UserDelegate enterButtonDelegate;
         public bool cancelButtonState = false;
+        public UserDelegate cancelButtonDelegate;
         private float cursorBlinkTime;
         private string currentTextTint
         {
@@ -284,6 +291,7 @@ namespace kOSPropMonitor
                 {
                     vt.buttonLabels[monitorIndex] = new Dictionary<int, string>();
                     vt.buttonStates[monitorIndex] = new Dictionary<int, bool>();
+                    vt.buttonDelegates[monitorIndex] = new Dictionary<int, UserDelegate>();
                     vt.flagLabels[monitorIndex] = new Dictionary<int, string>();
                     vt.flagStates[monitorIndex] = new Dictionary<int, bool>();
 
@@ -377,28 +385,52 @@ namespace kOSPropMonitor
                 else if (buttonID == upButton)
                 {
                     upButtonState = !upButtonState;
+                    if (upButtonDelegate != null)
+                    {
+                        upButtonDelegate.CallWithArgsPushedAlready();
+                    }
                 }
                 else if (buttonID == downButton)
                 {
                     downButtonState = !downButtonState;
+                    if (downButtonDelegate != null)
+                    {
+                        downButtonDelegate.CallWithArgsPushedAlready();
+                    }
                 }
                 else if (buttonID == leftButton)
                 {
                     leftButtonState = !leftButtonState;
+                    if (leftButtonDelegate != null)
+                    {
+                        leftButtonDelegate.CallWithArgsPushedAlready();
+                    }
                 }
                 else if (buttonID == rightButton)
                 {
                     rightButtonState = !rightButtonState;
+                    if (rightButtonDelegate != null)
+                    {
+                        rightButtonDelegate.CallWithArgsPushedAlready();
+                    }
                 }
 
                 //Enter and Cancel
                 else if (buttonID == enterButton)
                 {
                     enterButtonState = !enterButtonState;
+                    if (enterButtonDelegate != null)
+                    {
+                        enterButtonDelegate.CallWithArgsPushedAlready();
+                    }
                 }
                 else if (buttonID == cancelButton)
                 {
                     cancelButtonState = !cancelButtonState;
+                    if (cancelButtonDelegate != null)
+                    {
+                        cancelButtonDelegate.CallWithArgsPushedAlready();
+                    }
                 }
 
                 //Power Toggle Button
@@ -422,6 +454,12 @@ namespace kOSPropMonitor
             {
                 int bID = multiFunctionButtonsPOS.IndexOf(ID);
                 vt.buttonStates[monitorIndex][bID] = !vt.buttonStates[monitorIndex][bID];
+                
+                if (vt.buttonDelegates[monitorIndex].ContainsKey(bID))
+                {
+                    Debug.Log("Fuck!");
+                    vt.buttonDelegates[monitorIndex][bID].CallPassingArgs();
+                }
             }
         }
 

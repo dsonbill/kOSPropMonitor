@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using kOS.Safe.UserIO;
+using kOS.Safe.Encapsulation;
 
 namespace kOSPropMonitor
 {
@@ -281,6 +282,7 @@ namespace kOSPropMonitor
         public bool recentlyCreated = true;
         public Dictionary<int, Dictionary<int, string>> buttonLabels = new Dictionary<int, Dictionary<int, string>>();
         public Dictionary<int, Dictionary<int, bool>> buttonStates = new Dictionary<int, Dictionary<int, bool>>();
+        public Dictionary<int, Dictionary<int, UserDelegate>> buttonDelegates = new Dictionary<int, Dictionary<int, UserDelegate>>();
         public Dictionary<int, Dictionary<int, string>> flagLabels = new Dictionary<int, Dictionary<int, string>>();
         public Dictionary<int, Dictionary<int, bool>> flagStates = new Dictionary<int, Dictionary<int, bool>>();
 

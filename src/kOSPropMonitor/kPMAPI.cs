@@ -18,14 +18,14 @@ namespace kOSPropMonitor
     [KOSNomenclature("KPMAddon")]
     public class kPMAPI : kOS.Suffixed.Addon
     {
-        private kPMButtonAPI buttons;
-        private kPMButtonDelegateAPI buttonDelegates;
+        private kPMLabelAPI buttons;
+        private kPMButtonAPI buttonDelegates;
         private kPMFlagAPI flags;
 
         public kPMAPI(SharedObjects shared) : base(shared)
         {
-            AddSuffix("BUTTONS", new Suffix<kPMButtonAPI>(GetButtons));
-            AddSuffix("DELEGATES", new Suffix<kPMButtonDelegateAPI>(GetButtonDelegates));
+            AddSuffix("LABELS", new Suffix<kPMLabelAPI>(GetLabels));
+            AddSuffix("BUTTONS", new Suffix<kPMButtonAPI>(GetDelegates));
             AddSuffix("FLAGS", new Suffix<kPMFlagAPI>(GetFlags));
             AddSuffix("GETGUID", new OneArgsSuffix<StringValue, ScalarIntValue>((ScalarIntValue index) => GetGUID(index, false)));
             AddSuffix("GETGUIDSHORT", new OneArgsSuffix<StringValue, ScalarIntValue>((ScalarIntValue index) => GetGUID(index, true)));
@@ -38,20 +38,20 @@ namespace kOSPropMonitor
             return kPMCore.fetch.vessel_register.ContainsKey(shared.Vessel.id);
         }
 
-        private kPMButtonAPI GetButtons()
+        private kPMLabelAPI GetLabels()
         {
             if (buttons == null)
             {
-                buttons = new kPMButtonAPI(shared);
+                buttons = new kPMLabelAPI(shared);
             }
             return buttons;
         }
 
-        private kPMButtonDelegateAPI GetButtonDelegates()
+        private kPMButtonAPI GetDelegates()
         {
             if (buttonDelegates == null)
             {
-                buttonDelegates = new kPMButtonDelegateAPI(shared);
+                buttonDelegates = new kPMButtonAPI(shared);
             }
             return buttonDelegates;
         }
@@ -92,23 +92,23 @@ namespace kOSPropMonitor
         }
     }
 
-    [KOSNomenclature("BUTTONS")]
-    public class kPMButtonAPI : Structure
+    [KOSNomenclature("LABELS")]
+    public class kPMLabelAPI : Structure
     {
         private SharedObjects shared;
         private int monitor = 0;
 
-        public kPMButtonAPI(SharedObjects shared)
+        public kPMLabelAPI(SharedObjects shared)
         {
             this.shared = shared;
             AddSuffix("CURRENTMONITOR", new SetSuffix<ScalarIntValue>(() => { return monitor; }, (monitor) => { this.monitor = monitor; }));
-            AddSuffix("GETLABEL", new OneArgsSuffix<StringValue, ScalarIntValue>(GetButtonLabel));
-            AddSuffix("SETLABEL", new TwoArgsSuffix<ScalarIntValue, StringValue>(SetButtonLabel));
-            AddSuffix("GETSTATE", new OneArgsSuffix<BooleanValue, ScalarIntValue>(GetButtonState));
-            AddSuffix("SETSTATE", new TwoArgsSuffix<ScalarIntValue, BooleanValue>(SetButtonState));
+            AddSuffix("GETLABEL", new OneArgsSuffix<StringValue, ScalarIntValue>(GetLabel));
+            AddSuffix("SETLABEL", new TwoArgsSuffix<ScalarIntValue, StringValue>(SetLabel));
+            AddSuffix("GETSTATE", new OneArgsSuffix<BooleanValue, ScalarIntValue>(GetState));
+            AddSuffix("SETSTATE", new TwoArgsSuffix<ScalarIntValue, BooleanValue>(SetState));
         }
 
-        private StringValue GetButtonLabel(ScalarIntValue value)
+        private StringValue GetLabel(ScalarIntValue value)
         {
             if (!kPMCore.fetch.vessel_register.ContainsKey(shared.Vessel.id)) return "";
             if (kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors.Count == 0 || kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors.Count <= monitor) return "";
@@ -117,14 +117,14 @@ namespace kOSPropMonitor
             return kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).buttonLabels[monitor][value];
         }
 
-        private void SetButtonLabel(ScalarIntValue index, StringValue value)
+        private void SetLabel(ScalarIntValue index, StringValue value)
         {
             if (!kPMCore.fetch.vessel_register.ContainsKey(shared.Vessel.id)) return;
             if (kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors.Count == 0 || kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors.Count <= monitor) return;
             kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).buttonLabels[monitor][index] = value;
         }
 
-        private BooleanValue GetButtonState(ScalarIntValue value)
+        private BooleanValue GetState(ScalarIntValue value)
         {
             if (!kPMCore.fetch.vessel_register.ContainsKey(shared.Vessel.id)) return false;
             if (kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors.Count == 0 || kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors.Count <= monitor) return false;
@@ -141,37 +141,32 @@ namespace kOSPropMonitor
             return kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).buttonStates[monitor][value];
         }
 
-        private void SetButtonState(ScalarIntValue index, BooleanValue value)
+        private void SetState(ScalarIntValue index, BooleanValue value)
         {
             if (!kPMCore.fetch.vessel_register.ContainsKey(shared.Vessel.id)) return;
             if (kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors.Count == 0 || kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors.Count <= monitor) return;
             if (index < 0)
             {
                 if (index == -1) kPMCore.fetch.monitor_register[kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors[monitor]].enterButtonState = value;
-                if (index == -2) kPMCore.fetch.monitor_register[kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors[monitor]].cancelButtonState = value;
-                if (index == -3) kPMCore.fetch.monitor_register[kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors[monitor]].upButtonState = value;
-                if (index == -4) kPMCore.fetch.monitor_register[kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors[monitor]].downButtonState = value;
-                if (index == -5) kPMCore.fetch.monitor_register[kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors[monitor]].leftButtonState = value;
-                if (index == -6) kPMCore.fetch.monitor_register[kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors[monitor]].rightButtonState = value;
+                else if (index == -2) kPMCore.fetch.monitor_register[kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors[monitor]].cancelButtonState = value;
+                else if (index == -3) kPMCore.fetch.monitor_register[kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors[monitor]].upButtonState = value;
+                else if (index == -4) kPMCore.fetch.monitor_register[kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors[monitor]].downButtonState = value;
+                else if (index == -5) kPMCore.fetch.monitor_register[kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors[monitor]].leftButtonState = value;
+                else if (index == -6) kPMCore.fetch.monitor_register[kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).monitors[monitor]].rightButtonState = value;
                 return;
             }
             kPMCore.fetch.GetVesselMonitors(shared.Vessel.id).buttonStates[monitor][index] = value;
         }
-
-        private void ButtonTrigger(ScalarIntValue index, UserDelegate value)
-        {
-
-        }
     }
 
 
-    [KOSNomenclature("DELEGATES")]
-    public class kPMButtonDelegateAPI : Structure
+    [KOSNomenclature("BUTTONS")]
+    public class kPMButtonAPI : Structure
     {
         private SharedObjects shared;
         private int monitor = 0;
 
-        public kPMButtonDelegateAPI(SharedObjects shared)
+        public kPMButtonAPI(SharedObjects shared)
         {
             this.shared = shared;
             AddSuffix("CURRENTMONITOR", new SetSuffix<ScalarIntValue>(() => { return monitor; }, (monitor) => { this.monitor = monitor; }));

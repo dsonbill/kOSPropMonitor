@@ -1,7 +1,5 @@
 {buttonLabel0} {buttonLabel1} {buttonLabel2} {buttonLabel3} {buttonLabel4} {buttonLabel5} EXIT
 [#60F8F9]CPU: {currentCPU}   [#60F8F9]ID: {GUID}   {keyboardFlag}
-[#60F8F9]FLAG  {flagLabel0} {flagLabel1} {flagLabel2} {flagLabel3} {flagLabel4} {flagLabel5} {flagLabel6}
-[#60F8F9]PANEL {flagLabel7} {flagLabel8} {flagLabel9} {flagLabel10} {flagLabel11} {flagLabel12} {flagLabel13}
 {l1}
 {l2}
 {l3}
@@ -17,4 +15,6 @@
 {l13}
 {l14}
 {l15}
-{buttonLabel7} {buttonLabel8} {buttonLabel9} {buttonLabel10} {buttonLabel11} {buttonLabel12} {buttonLabel13}}
+{l16}
+{l17}
+{buttonLabel7} {buttonLabel8} {buttonLabel9} {buttonLabel10} {buttonLabel11} {buttonLabel12} {buttonLabel13}

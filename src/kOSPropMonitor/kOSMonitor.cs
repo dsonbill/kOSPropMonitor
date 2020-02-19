@@ -7,6 +7,7 @@ using kOS;
 using kOS.Safe.Screen;
 using kOS.Module;
 using kOS.Safe.Encapsulation;
+using kOS.Safe.Execution;
 using JsonFx.Json;
 
 namespace kOSPropMonitor
@@ -384,52 +385,46 @@ namespace kOSPropMonitor
                 //Arrow Buttons
                 else if (buttonID == upButton)
                 {
-                    upButtonState = !upButtonState;
                     if (upButtonDelegate != null)
                     {
-                        upButtonDelegate.CallWithArgsPushedAlready();
+                        upButtonDelegate.TriggerOnNextOpcode(InterruptPriority.CallbackOnce);
                     }
                 }
                 else if (buttonID == downButton)
                 {
-                    downButtonState = !downButtonState;
                     if (downButtonDelegate != null)
                     {
-                        downButtonDelegate.CallWithArgsPushedAlready();
+                        downButtonDelegate.TriggerOnNextOpcode(InterruptPriority.CallbackOnce);
                     }
                 }
                 else if (buttonID == leftButton)
                 {
-                    leftButtonState = !leftButtonState;
                     if (leftButtonDelegate != null)
                     {
-                        leftButtonDelegate.CallWithArgsPushedAlready();
+                        leftButtonDelegate.TriggerOnNextOpcode(InterruptPriority.CallbackOnce);
                     }
                 }
                 else if (buttonID == rightButton)
                 {
-                    rightButtonState = !rightButtonState;
                     if (rightButtonDelegate != null)
                     {
-                        rightButtonDelegate.CallWithArgsPushedAlready();
+                        rightButtonDelegate.TriggerOnNextOpcode(InterruptPriority.CallbackOnce);
                     }
                 }
 
                 //Enter and Cancel
                 else if (buttonID == enterButton)
                 {
-                    enterButtonState = !enterButtonState;
                     if (enterButtonDelegate != null)
                     {
-                        enterButtonDelegate.CallWithArgsPushedAlready();
+                        enterButtonDelegate.TriggerOnNextOpcode(InterruptPriority.CallbackOnce);
                     }
                 }
                 else if (buttonID == cancelButton)
                 {
-                    cancelButtonState = !cancelButtonState;
                     if (cancelButtonDelegate != null)
                     {
-                        cancelButtonDelegate.CallWithArgsPushedAlready();
+                        cancelButtonDelegate.TriggerOnNextOpcode(InterruptPriority.CallbackOnce);
                     }
                 }
 
@@ -453,12 +448,10 @@ namespace kOSPropMonitor
             if (multiFunctionButtonsPOS.Contains(ID))
             {
                 int bID = multiFunctionButtonsPOS.IndexOf(ID);
-                vt.buttonStates[monitorIndex][bID] = !vt.buttonStates[monitorIndex][bID];
                 
                 if (vt.buttonDelegates[monitorIndex].ContainsKey(bID))
                 {
-                    Debug.Log("Fuck!");
-                    vt.buttonDelegates[monitorIndex][bID].CallPassingArgs();
+                    vt.buttonDelegates[monitorIndex][bID].TriggerOnNextOpcode(InterruptPriority.CallbackOnce);
                 }
             }
         }

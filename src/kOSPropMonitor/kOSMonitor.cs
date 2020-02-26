@@ -91,6 +91,8 @@ namespace kOSPropMonitor
         public bool coloredTerminal = true;
         [KSPField]
         public bool replacementsToUpper = false;
+        [KSPField]
+        public int processorLabelLength = 20;
 
         //General Variables
         private bool initialized = false;
@@ -151,6 +153,7 @@ namespace kOSPropMonitor
                         if (coloredTerminal) output = Utilities.FreeFormat(output, replacement_formats, replacementsToUpper).Replace("{COLOR}", currentTextTint);
                         output = SetButtons(output);
                         output = SetFlags(output);
+                        output = SetProcessorName(output);
                         return output;
                     }
                     return "kOS Terminal Standing By";
@@ -690,6 +693,29 @@ namespace kOSPropMonitor
                 {
                     Debug.Log("kOSMonitor: Error in templating for buttons!");
                 }
+            }
+            return output;
+        }
+
+        string SetProcessorName(string input)
+        {
+            string output = input;
+            try
+            {
+                // Even I don't know why I program anymore
+                int numberOfRemainingSpaces = (processor_shares[current_processor_id].Processor.Tag.Length >= processorLabelLength) ? 0 : processorLabelLength - processor_shares[current_processor_id].Processor.Tag.Length;
+                int overflow = 0;
+                if ((processor_shares[current_processor_id].Processor.Tag.Length > processorLabelLength))
+                {
+                    overflow = processor_shares[current_processor_id].Processor.Tag.Length - processorLabelLength;
+                }
+
+                string replacement = processor_shares[current_processor_id].Processor.Tag.Substring(0, processor_shares[current_processor_id].Processor.Tag.Length - overflow) + new string(' ', numberOfRemainingSpaces);
+                output = output.Replace("{processorLabel}", replacement);
+            }
+            catch
+            {
+                Debug.Log("kOSMonitor: Error in templating for processor name!");
             }
             return output;
         }

@@ -1,4 +1,4 @@
-[#60F8F9]CPU: {currentCPU} - {processorLabel}  {keyboardFlag}{COLOR} EXIT
+[#60F8F9]CPU: {currentCPU} - [hw]{processorLabel}[/hw]  {keyboardFlag}{COLOR} EXIT
 [hw]{l1}
 [hw]{l2}
 [hw]{l3}

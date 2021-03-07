@@ -64,7 +64,7 @@ namespace kOSPropMonitor
         [KSPField]
         public string textTint = "[#009900ff]";
         [KSPField]
-        public string coloredTextTint = "[#ffffffff]";
+        public string textTintColored = "[#ffffffff]";
         [KSPField]
         public string textTintUnpowered = "[#ffffff3e]";
         [KSPField]
@@ -135,7 +135,7 @@ namespace kOSPropMonitor
             {
                 if (isPowered)
                 {
-                    if (coloredTerminal) return coloredTextTint;
+                    if (coloredTerminal) return textTintColored;
                     return textTint;
                 }
                 return textTintUnpowered;
@@ -254,6 +254,9 @@ namespace kOSPropMonitor
                 processor_shares.Add(GetProcessorShare(processor));
             }
 
+            //Set Vessel Part Cound
+            lastPartCount = this.vessel.parts.Count;
+
             //Return Early If No Processor
             if (!processorIsInstalled) return;
 
@@ -262,9 +265,6 @@ namespace kOSPropMonitor
 
             //Get Vessel Track
             vt = kPMCore.fetch.GetVesselMonitors(this.vessel.id);
-
-            //Set Vessel Part Cound
-            lastPartCount = this.vessel.parts.Count;
 
             //Single-Init Actions
             if (!initialized)
